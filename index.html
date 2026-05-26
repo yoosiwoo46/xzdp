@@ -1172,6 +1172,17 @@ body::before {
       <button class="btn-recommend" onclick="addRestaurant()">✅ 提交新增</button>
     </div>
 
+    <!-- 同步设置 -->
+    <div class="maintain-card">
+      <h3>🔗 数据同步设置</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">设置 GitHub Token 后，新增/编辑/删除餐厅将自动同步，其他用户刷新即可看到</p>
+      <div style="display:flex;gap:8px;">
+        <input type="password" id="github-token-input" placeholder="粘贴 GitHub Personal Access Token" style="flex:1;padding:10px 14px;background:var(--surface);color:var(--text-light);border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:inherit;">
+        <button class="btn-recommend" style="padding:10px 16px;font-size:13px;white-space:nowrap;" onclick="saveGithubToken()">保存</button>
+      </div>
+      <div id="token-status" style="font-size:11px;color:var(--text-muted);margin-top:6px;"></div>
+    </div>
+
     <!-- 餐厅列表 -->
     <div class="maintain-card">
       <h3>📋 已有餐厅列表</h3>
@@ -1490,11 +1501,16 @@ async function saveData(data) {
   localStorage.setItem('restaurantData', JSON.stringify(data));
   localStorage.setItem('restaurantDataVersion', DATA_VERSION);
   // Push to GitHub
+  const token = GITHUB_CONFIG.token || localStorage.getItem('github_token');
+  if (!token) {
+    console.warn('未设置GitHub Token，数据仅保存在本地');
+    return;
+  }
   try {
     const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
     // Get current file SHA
     const resp = await fetch(GITHUB_CONFIG.apiUrl, {
-      headers: { 'Authorization': `token ${GITHUB_CONFIG.token}` }
+      headers: { 'Authorization': `token ${token}` }
     });
     let sha = '';
     if (resp.ok) {
@@ -1513,7 +1529,7 @@ async function saveData(data) {
     const putResp = await fetch(GITHUB_CONFIG.apiUrl, {
       method: method,
       headers: {
-        'Authorization': `token ${GITHUB_CONFIG.token}`,
+        'Authorization': `token ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
@@ -2051,6 +2067,32 @@ function switchPage(pageId) {
 async function showMaintainPage() {
   switchPage('maintain-page');
   await renderRestaurantTable();
+  // Show token status
+  const token = localStorage.getItem('github_token');
+  const statusEl = document.getElementById('token-status');
+  if (token) {
+    statusEl.textContent = '✅ 已配置 Token（数据将自动同步到 GitHub）';
+    statusEl.style.color = 'var(--green)';
+    document.getElementById('github-token-input').value = token;
+  } else {
+    statusEl.textContent = '⚠️ 未配置 Token，数据仅保存在本地';
+    statusEl.style.color = 'var(--gold)';
+  }
+}
+
+function saveGithubToken() {
+  const token = document.getElementById('github-token-input').value.trim();
+  if (!token) {
+    localStorage.removeItem('github_token');
+    document.getElementById('token-status').textContent = '⚠️ 未配置 Token，数据仅保存在本地';
+    document.getElementById('token-status').style.color = 'var(--gold)';
+    showToast('Token 已清除');
+    return;
+  }
+  localStorage.setItem('github_token', token);
+  document.getElementById('token-status').textContent = '✅ 已配置 Token（数据将自动同步到 GitHub）';
+  document.getElementById('token-status').style.color = 'var(--green)';
+  showToast('Token 保存成功');
 }
 
 // ========== 推荐页顶部提示文案 ==========
