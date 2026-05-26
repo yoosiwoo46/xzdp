@@ -1,0 +1,2931 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小众点评 · 今天吃啥好</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+
+/* ========== CSS Variables ========== */
+:root {
+  --bg: #1a1210;
+  --bg-warm: #231a16;
+  --surface: #2c211b;
+  --surface-light: #3a2e26;
+  --paper: #f5e6d0;
+  --paper-dark: #e8d5b8;
+  --text-light: #f5e6d0;
+  --text-muted: #a89080;
+  --accent: #e85d3a;
+  --accent-glow: rgba(232, 93, 58, 0.3);
+  --gold: #d4a853;
+  --gold-dim: rgba(212, 168, 83, 0.15);
+  --red: #c4453a;
+  --green: #6b8f5e;
+  --border: rgba(212, 168, 83, 0.2);
+}
+
+/* ========== Reset & Base ========== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Noto Serif SC', "PingFang SC", "Microsoft YaHei", serif;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(212,168,83,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, rgba(232,93,58,0.04) 0%, transparent 50%);
+  color: var(--text-light);
+  min-height: 100vh;
+  padding-bottom: env(safe-area-inset-bottom);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 20px calc(40px + env(safe-area-inset-bottom));
+  position: relative;
+  z-index: 1;
+}
+
+/* ========== Page Transitions ========== */
+.page {
+  display: none;
+  opacity: 0;
+}
+.page.active {
+  display: block;
+  animation: fadeIn 0.25s ease forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== Date Bar ========== */
+.date-bar {
+  text-align: center;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.version-entry {
+  position: absolute;
+  top: 24px;
+  right: 20px;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+.version-entry:hover { opacity: 0.8; }
+
+/* ========== Main Card (Hero) ========== */
+.main-card {
+  background: var(--paper);
+  border-radius: 4px;
+  padding: 36px 28px;
+  margin-bottom: 24px;
+  border: none;
+  box-shadow:
+    0 2px 20px rgba(0,0,0,0.3),
+    0 0 60px rgba(212,168,83,0.05);
+  position: relative;
+  background-image:
+    linear-gradient(135deg, transparent 40%, rgba(0,0,0,0.02) 40%, rgba(0,0,0,0.02) 60%, transparent 60%);
+  background-size: 4px 4px;
+}
+.main-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  color: #2c1810;
+  line-height: 1.6;
+  margin-bottom: 32px;
+  letter-spacing: 2px;
+}
+.main-title span {
+  display: block;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 12px;
+  color: #8a7560;
+  font-weight: 400;
+  margin-top: 10px;
+  letter-spacing: 1px;
+}
+
+/* ========== Buttons ========== */
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 16px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 2px;
+  box-shadow: 0 4px 16px var(--accent-glow);
+}
+.btn-primary:hover {
+  background: #d14e2e;
+  box-shadow: 0 6px 24px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); box-shadow: 0 2px 8px var(--accent-glow); }
+
+.btn-secondary {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  color: #8a7560;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: color 0.2s;
+  font-family: inherit;
+  letter-spacing: 1px;
+}
+.btn-secondary:hover { color: var(--accent); }
+
+.btn-recommend {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--gold);
+  color: #1a1210;
+  border: none;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 2px;
+  box-shadow: 0 4px 16px var(--gold-dim);
+}
+.btn-recommend:hover { background: #c49a48; transform: translateY(-1px); }
+.btn-recommend:active { transform: translateY(0); }
+
+#btn-go {
+  transition: all 0.2s ease;
+}
+
+.btn-choose {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  background: var(--gold);
+  color: #1a1210;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 16px var(--gold-dim);
+}
+.btn-choose:hover { background: #c49a48; transform: translateY(-1px); }
+.btn-choose:active { transform: translateY(0); }
+.btn-choose.chosen {
+  background: var(--surface);
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: default;
+  border: 1px solid var(--border);
+}
+
+.btn-regenerate-inline {
+  vertical-align: middle;
+  margin-left: 10px;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.btn-regenerate-inline:hover { background: var(--gold); color: #1a1210; }
+
+/* ========== Info Cards ========== */
+.info-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.info-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.info-card {
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+}
+.info-card-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.weather-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.weather-icon { font-size: 32px; line-height: 1; }
+.weather-temp {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+.weather-temp span { font-size: 14px; color: var(--text-muted); }
+.weather-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.weather-detail {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.almanac-row {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.almanac-label {
+  color: var(--text-muted);
+  min-width: 60px;
+  flex-shrink: 0;
+}
+.almanac-value { color: var(--text-light); }
+.almanac-value.good { color: var(--green); }
+.almanac-value.bad { color: var(--red); }
+.lucky-color {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 6px;
+  border: 1px solid var(--border);
+}
+
+.holiday-card {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.countdown-main-item {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-light);
+  text-align: center;
+  margin-bottom: 6px;
+}
+.countdown-sub-item {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 3px;
+}
+.countdown-today { color: var(--gold); font-weight: 600; }
+.countdown-past { opacity: 0.5; }
+.cd-date-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.cd-date-row select {
+  padding: 10px 8px;
+  background: var(--surface);
+  color: var(--text-light);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Noto Serif SC', serif;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a89080' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+  min-width: 0;
+}
+.cd-date-row select#cd-type { min-width: 80px; }
+.cd-date-row select#cd-year { min-width: 90px; }
+.cd-date-row select#cd-month { min-width: 70px; }
+.cd-date-row select#cd-day { min-width: 60px; }
+.cd-date-sep {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ========== Form Styles ========== */
+.input-section {
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+  display: none;
+}
+.input-section.show { display: block; }
+
+.form-group {
+  margin-bottom: 16px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold);
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+.form-group input[type="number"],
+.form-group select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--text-light);
+  background: var(--surface);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
+}
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-dim);
+}
+.form-group input::placeholder,
+.form-group select option:first-child {
+  color: #c0a890;
+}
+.form-group select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a89080' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+/* Chips */
+.chip-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  background: var(--surface);
+  font-family: inherit;
+}
+.chip:active { transform: scale(0.96); }
+.chip.selected {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.chip-clear {
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.chip-clear:hover { color: var(--red); border-color: var(--red); }
+
+/* ========== Weather Banner ========== */
+.weather-banner {
+  padding: 6px 12px;
+  margin: 0;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-block;
+  border-left: 3px solid var(--gold);
+}
+.weather-banner.holiday { background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(232,93,58,0.3); }
+.weather-banner.bad-weather { background: rgba(196,69,58,0.15); color: var(--red); border: 1px solid rgba(196,69,58,0.3); }
+.weather-banner.nice-weather { background: rgba(107,143,94,0.15); color: var(--green); border: 1px solid rgba(107,143,94,0.3); }
+.weather-banner.default-mood { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--border); }
+
+/* ========== Result Section ========== */
+.result-section {
+  display: none;
+}
+.result-section.show { display: block; }
+
+.result-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.result-header h2 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 18px;
+  color: var(--gold);
+  font-weight: 700;
+}
+.degrade-tag {
+  display: inline-block;
+  background: var(--accent-glow);
+  color: var(--accent);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 6px;
+  border: 1px solid rgba(232,93,58,0.3);
+}
+
+/* ========== Restaurant Cards ========== */
+.restaurant-card {
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 18px 20px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.restaurant-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+}
+.restaurant-card:nth-child(1)::before { background: var(--accent); }
+.restaurant-card:nth-child(2)::before { background: var(--gold); }
+.restaurant-card:nth-child(3)::before { background: var(--green); }
+
+@keyframes cardSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.restaurant-card {
+  animation: cardSlideUp 0.35s ease forwards;
+  opacity: 0;
+}
+.restaurant-card:nth-child(1) { animation-delay: 0.05s; }
+.restaurant-card:nth-child(2) { animation-delay: 0.12s; }
+.restaurant-card:nth-child(3) { animation-delay: 0.19s; }
+
+.rank-badge {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+.restaurant-card:nth-child(1) .rank-badge { background: var(--accent); }
+.restaurant-card:nth-child(2) .rank-badge { background: var(--gold); color: #1a1210; }
+.restaurant-card:nth-child(3) .rank-badge { background: var(--green); }
+
+.restaurant-name {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-light);
+  margin-bottom: 4px;
+  padding-right: 40px;
+}
+.restaurant-area {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.restaurant-brief {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.restaurant-detail-toggle {
+  font-size: 12px;
+  color: var(--gold);
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.restaurant-detail-toggle:active { opacity: 0.6; }
+.restaurant-detail {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.restaurant-detail.expanded {
+  max-height: 120px;
+}
+.info-item {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.info-item .label { color: var(--text-muted); }
+.info-item .value { font-weight: 600; color: var(--text-light); }
+.score-display {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.no-result {
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 40px 20px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.no-result .emoji { font-size: 40px; margin-bottom: 12px; }
+.no-result p { color: var(--text-muted); font-size: 13px; }
+
+/* ========== Modals ========== */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(10,8,6,0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--surface-light);
+  border-radius: 8px;
+  padding: 32px 24px;
+  width: 90%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  border: 1px solid var(--border);
+}
+.modal-box h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: var(--gold);
+  font-weight: 700;
+}
+.modal-box input[type="password"] {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 8px;
+  text-align: center;
+  color: var(--text-light);
+  background: var(--surface);
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.modal-box input[type="password"]:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-dim);
+}
+.modal-box .error-msg {
+  color: var(--red);
+  font-size: 12px;
+  min-height: 20px;
+  margin-bottom: 8px;
+}
+.modal-btns { display: flex; gap: 8px; }
+.modal-btns button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.modal-btns button:active { transform: scale(0.97); }
+.btn-cancel { background: var(--surface); color: var(--text-muted); }
+.btn-cancel:hover { background: var(--surface-light); }
+.btn-confirm { background: var(--accent); color: #fff; }
+.btn-confirm:hover { background: #d14e2e; }
+
+/* ========== Maintain Page ========== */
+.maintain-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.btn-back {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 6px 14px;
+  cursor: pointer;
+  margin-right: 12px;
+  transition: all 0.15s;
+  font-family: inherit;
+  font-weight: 500;
+}
+.btn-back:hover { background: var(--surface-light); color: var(--text-light); }
+.maintain-header h2 {
+  font-family: 'Noto Serif SC', serif;
+  color: var(--gold);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.maintain-card {
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.maintain-card h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 14px;
+  color: var(--gold);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+}
+
+/* Restaurant List */
+.restaurant-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.restaurant-list-item:last-child { border-bottom: none; }
+.rli-name { font-size: 14px; font-weight: 600; color: var(--text-light); margin-bottom: 2px; }
+.rli-meta { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+.rli-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 12px; }
+.btn-edit, .btn-delete {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  font-weight: 500;
+}
+.btn-edit { background: var(--surface-light); color: var(--gold); }
+.btn-edit:hover { background: var(--gold); color: #1a1210; }
+.btn-delete { background: var(--surface-light); color: var(--red); }
+.btn-delete:hover { background: var(--red); color: #fff; }
+
+/* Edit Modal */
+.edit-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(10,8,6,0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  padding: 20px;
+}
+.edit-modal-overlay.show { display: flex; }
+.edit-modal-box {
+  background: var(--surface-light);
+  border-radius: 8px;
+  padding: 24px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  border: 1px solid var(--border);
+}
+.edit-modal-box h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 16px;
+  color: var(--gold);
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 700;
+}
+.edit-modal-box .form-group { margin-bottom: 14px; }
+.edit-modal-box .form-group label {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.edit-modal-box .form-group input,
+.edit-modal-box .form-group select {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.edit-modal-box .modal-btns { margin-top: 16px; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  background: var(--surface-light);
+  color: var(--text-light);
+  padding: 14px 28px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* ========== Eat Log ========== */
+.eatlog-sort-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.sort-btn {
+  padding: 4px 10px;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: 'Noto Serif SC', serif;
+  transition: all 0.15s;
+}
+.sort-btn.active { background: var(--gold-dim); color: var(--gold); border-color: var(--gold); }
+.eatlog-table { font-size: 12px; }
+.eatlog-table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.eatlog-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 10px 4px;
+  border-bottom: 1px solid rgba(212,168,83,0.08);
+  align-items: center;
+}
+.eatlog-table-name { font-weight: 600; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn-clear-log {
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: 'Noto Serif SC', serif;
+  transition: all 0.15s;
+  opacity: 0.7;
+}
+.btn-clear-log:hover { opacity: 1; background: rgba(196,69,58,0.1); }
+
+.btn-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.btn-action-row .btn-choose,
+.btn-action-row .btn-skip {
+  flex: 1;
+  margin-top: 0;
+  text-align: center;
+}
+.btn-skip {
+  padding: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Noto Serif SC', serif;
+}
+.btn-skip:hover { border-color: var(--red); color: var(--red); }
+.btn-skip.skipped {
+  background: var(--surface);
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.area-tip {
+  font-size: 11px;
+  color: var(--gold);
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+.version-item { margin-bottom: 24px; }
+.version-item:last-child { margin-bottom: 0; }
+.version-tag {
+  display: inline-block;
+  background: var(--gold-dim);
+  color: var(--gold);
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.version-date { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+.version-list { padding-left: 18px; }
+.version-list li { font-size: 13px; color: var(--text-light); line-height: 1.8; opacity: 0.85; }
+.version-credits {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  line-height: 1.8;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 374px) {
+  .container { padding: 16px 12px calc(32px + env(safe-area-inset-bottom)); }
+  .main-card { padding: 24px 16px; }
+  .main-title { font-size: 20px; letter-spacing: 1px; }
+  .btn-primary, .btn-recommend { padding: 12px 16px; font-size: 14px; }
+  .input-section { padding: 16px; }
+  .restaurant-card { padding: 14px 16px; }
+  .restaurant-name { font-size: 15px; }
+  .info-row { grid-template-columns: 1fr; }
+  .modal-box { padding: 24px 16px; }
+  .edit-modal-box { padding: 16px; }
+  .maintain-card { padding: 16px; }
+  .chip { padding: 5px 10px; font-size: 11px; }
+}
+@media (min-width: 375px) and (max-width: 413px) {
+  .container { padding: 20px 16px calc(36px + env(safe-area-inset-bottom)); }
+  .main-card { padding: 28px 20px; }
+}
+@media (min-width: 768px) {
+  .container { padding: 40px 20px; max-width: 520px; }
+  .main-card { padding: 48px 36px; }
+  .main-title { font-size: 26px; }
+}
+@media (min-width: 1024px) {
+  .container { max-width: 560px; }
+  .main-card { padding: 56px 40px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- ==================== 首页 ==================== -->
+  <div id="home-page" class="page active" style="position:relative;">
+    <div class="date-bar" id="date-display"></div>
+    <div class="version-entry" onclick="switchPage('version-page')">V1.6</div>
+
+    <div class="main-card">
+      <div class="main-title">
+        吾日三省吾身<br>早午晚饭吃什么
+        <span>小众点评 · 今天吃啥好</span>
+      </div>
+      <button class="btn-primary" id="btn-start">🍽️ 我要和饭搭子吃饭</button>
+      <button class="btn-secondary" id="btn-maintain">我要新增或编辑食堂</button>
+      <button class="btn-secondary" id="btn-eatlog" style="margin-top:4px;">📋 进食记录</button>
+    </div>
+
+    <!-- 首页信息卡片 -->
+    <div class="info-cards">
+      <!-- 天气 + 节假日 并排 -->
+      <div class="info-row">
+        <div class="info-card" id="weather-card">
+          <div class="info-card-title">🌤️ 杭州今日天气</div>
+          <div class="weather-main">
+            <div class="weather-icon" id="weather-icon">--</div>
+            <div>
+              <div class="weather-temp" id="weather-temp">--<span>°C</span></div>
+              <div class="weather-desc" id="weather-desc">加载中...</div>
+            </div>
+          </div>
+          <div class="weather-detail" id="weather-detail"></div>
+        </div>
+        <div class="info-card holiday-card" id="holiday-card" style="cursor:pointer;" onclick="switchPage('countdown-page')">
+          <div class="info-card-title">📅 倒数日 <span style="font-size:10px;opacity:0.5;margin-left:auto;">管理 ›</span></div>
+          <div id="countdown-display"></div>
+        </div>
+      </div>
+
+      <!-- 黄历卡片 -->
+      <div class="info-card" id="almanac-card">
+        <div class="info-card-title">📜 今日黄历</div>
+        <div id="almanac-content">加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 推荐页面（独立页面） ==================== -->
+  <div id="recommend-page" class="page">
+    <div class="maintain-header" style="flex-direction:column; align-items:flex-start; gap:4px;">
+      <div style="display:flex; align-items:center;">
+        <button class="btn-back" id="btn-back-home">← 返回首页</button>
+        <h2>🍽️ 选餐偏好</h2>
+      </div>
+      <div class="weather-banner" id="weather-banner" style="display:none;"></div>
+    </div>
+
+    <!-- 用户输入表单 -->
+    <div class="maintain-card">
+      <div class="form-group">
+        <label>👥 吃饭人数</label>
+        <input type="number" id="people-count" min="1" max="100" value="2">
+      </div>
+      <div class="form-group">
+        <label>⏰ 时间紧急吗</label>
+        <select id="urgency">
+          <option value="还好">还好</option>
+          <option value="很急">很急</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>🚫 不想吃什么（可多选）</label>
+        <div class="chip-selector" id="avoid-chips">
+        </div>
+        <div class="chip-clear" id="avoid-chip-clear" style="display:none;" onclick="clearAvoidChips()">✕ 清空</div>
+      </div>
+      <div class="form-group">
+        <label>😋 特别想吃什么（可多选）</label>
+        <div class="chip-selector" id="prefer-chips">
+        </div>
+        <div class="chip-clear" id="chip-clear" style="display:none;" onclick="clearAllChips()">✕ 清空</div>
+      </div>
+      <button class="btn-recommend" id="btn-go">🎲 我要开盲盒</button>
+    </div>
+
+    <!-- 推荐结果 -->
+    <div class="result-section" id="result-section">
+      <div class="result-header">
+        <h2 style="display:inline;">为你推荐</h2>
+        <button class="btn-regenerate-inline" id="btn-regenerate" onclick="regenerate()" style="display:none;">🔄 换一批</button>
+        <div id="degrade-info"></div>
+      </div>
+      <div id="result-list"></div>
+    </div>
+  </div>
+
+  <!-- ==================== 数据维护页面 ==================== -->
+  <div id="maintain-page" class="page">
+    <div class="maintain-header">
+      <button class="btn-back" id="btn-back">← 返回</button>
+      <h2>食堂数据维护</h2>
+    </div>
+
+    <!-- 新增餐厅 -->
+    <div class="maintain-card">
+      <h3>➕ 新增餐厅</h3>
+      <div class="form-group">
+        <label>商圈</label>
+        <select id="add-area" onchange="toggleOtherArea('add')">
+          <option value="">请选择</option>
+          <option value="万达及附近">万达及附近</option>
+          <option value="地铁站及较近的欧美金融城">地铁站及较近的欧美金融城</option>
+          <option value="美塘广场及远方的欧美金融城">美塘广场及远方的欧美金融城</option>
+          <option value="再远亿点">再远亿点</option>
+          <option value="其他">其他</option>
+        </select>
+        <input type="text" id="add-area-other" placeholder="请输入商圈名称" style="display:none; margin-top:8px; width:100%; padding:10px 12px; border:1px solid rgba(212,168,83,0.2); border-radius:4px; font-size:13px; color:#f5e6d0; background:#2c211b; font-family:inherit;">
+      </div>
+      <div class="form-group">
+        <label>店名</label>
+        <input type="text" id="add-name" placeholder="请输入店名">
+      </div>
+      <div class="form-group">
+        <label>主要吃什么</label>
+        <select id="add-food">
+          <option value="">请选择</option>
+          <option value="面条米粉">面条米粉</option>
+          <option value="牛蛙烤鱼">牛蛙烤鱼</option>
+          <option value="湘赣炒菜">湘赣炒菜</option>
+          <option value="烧烤烤肉">烧烤烤肉</option>
+          <option value="鸡汤饭">鸡汤饭</option>
+          <option value="烤饼鸡柳等小吃">烤饼鸡柳等小吃</option>
+          <option value="清淡的菜">清淡的菜</option>
+          <option value="西式工作餐">西式工作餐</option>
+          <option value="牛羊肉">牛羊肉</option>
+          <option value="普通工作餐">普通工作餐</option>
+          <option value="日式工作餐">日式工作餐</option>
+          <option value="汉堡披萨">汉堡披萨</option>
+          <option value="大杂烩">大杂烩</option>
+          <option value="麻辣烫冒菜">麻辣烫冒菜</option>
+          <option value="朝鲜饭">朝鲜饭</option>
+          <option value="火锅">火锅</option>
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label>上菜速度 (0-10)</label>
+          <select id="add-speed">
+            <option value="">请选择</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>距离远近 (0-10)</label>
+          <select id="add-distance">
+            <option value="">请选择</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>口味辣否 (0-10)</label>
+          <select id="add-spicy">
+            <option value="">请选择</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>美味程度 (0-10)</label>
+          <select id="add-tasty">
+            <option value="">请选择</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label>可容纳人数 (0-100)</label>
+          <input type="number" id="add-capacity" min="0" max="100" placeholder="0-100">
+        </div>
+        <div class="form-group">
+          <label>人均价位 (0-1000)</label>
+          <input type="number" id="add-price" min="0" max="1000" placeholder="0-1000">
+        </div>
+        <div class="form-group">
+          <label>建议最小人数</label>
+          <input type="number" id="add-minpeople" min="1" max="100" placeholder="1-100">
+        </div>
+      </div>
+      <button class="btn-recommend" onclick="addRestaurant()">✅ 提交新增</button>
+    </div>
+
+    <!-- 餐厅列表 -->
+    <div class="maintain-card">
+      <h3>📋 已有餐厅列表</h3>
+      <div id="restaurant-list"></div>
+    </div>
+  </div>
+
+  <!-- ==================== 进食记录页面 ==================== -->
+  <div id="eatlog-page" class="page">
+    <div class="maintain-header">
+      <button class="btn-back" id="btn-back-eatlog">← 返回首页</button>
+      <h2>📋 进食记录</h2>
+    </div>
+    <div class="maintain-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="text-align:center;color:var(--text-muted);font-size:13px;flex:1;">近30天各店铺数据统计</div>
+        <button class="btn-clear-log" onclick="clearEatLog()">🗑️ 一键清除</button>
+      </div>
+      <div id="eatlog-list"></div>
+    </div>
+  </div>
+
+  <!-- ==================== 版本迭代页面 ==================== -->
+  <div id="version-page" class="page">
+    <div class="maintain-header">
+      <button class="btn-back" id="btn-back-version">← 返回首页</button>
+      <h2>📝 版本迭代</h2>
+    </div>
+    <div class="maintain-card">
+      <div class="version-item">
+        <div class="version-tag">V1.6</div>
+        <div class="version-date">260422 迭代</div>
+        <ul class="version-list">
+          <li>进食记录新增一键清除功能</li>
+          <li>新增或编辑食堂可支持用户自定义设置密码</li>
+          <li>节假日倒计时迭代为倒数日</li>
+          <li>修复部分餐厅底层数据</li>
+        </ul>
+      </div>
+      <div class="version-item">
+        <div class="version-tag">V1.5</div>
+        <div class="version-date">260420 迭代</div>
+        <ul class="version-list">
+          <li>新增四家餐厅（彭兜兜大排档、天街烤匠、海底捞、赵美丽）以及火锅品类</li>
+          <li>新增餐厅【不感兴趣】按钮</li>
+          <li>新增餐厅推荐次数、选中率、点踩率等数据指标</li>
+          <li>新增餐厅附近奶茶饮品标签</li>
+          <li>调整综合得分计算逻辑与优先推荐展示逻辑</li>
+          <li>其他交互迭代</li>
+        </ul>
+      </div>
+      <div class="version-item">
+        <div class="version-tag">V1.0</div>
+        <div class="version-date">260419 上线</div>
+        <ul class="version-list">
+          <li>小众点评初始版本上线</li>
+          <li>支持餐厅推荐、盲盒模式、数据维护</li>
+          <li>集成天气、黄历、节假日倒计时</li>
+        </ul>
+      </div>
+      <div class="version-credits">
+        <div>PM Owner：鼠</div>
+        <div>RD Owner：Trae Solo x GLM5.1</div>
+        <div>设计：鼠 & Trae Solo x GLM5.1</div>
+        <div>QA：鼠 & Trae Solo x GLM5.1</div>
+        <div>特别感谢：wy老师</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 倒数日管理页面 ==================== -->
+  <div id="countdown-page" class="page">
+    <div class="maintain-header">
+      <button class="btn-back" id="btn-back-countdown">← 返回首页</button>
+      <h2>📅 倒数日管理</h2>
+    </div>
+    <div class="maintain-card">
+      <h3>➕ 新增倒数日</h3>
+      <div class="form-group">
+        <label>名称</label>
+        <input type="text" id="cd-name" placeholder="如：生日、纪念日">
+      </div>
+      <div class="form-group">
+        <label>日期</label>
+        <div class="cd-date-row">
+          <select id="cd-type" onchange="onCdTypeChange()">
+            <option value="year">每年</option>
+            <option value="abs">具体日期</option>
+          </select>
+          <select id="cd-year" onchange="onCdYearMonthChange()" style="display:none;"></select>
+          <select id="cd-month" onchange="onCdYearMonthChange()"></select>
+          <span class="cd-date-sep">月</span>
+          <select id="cd-day"></select>
+          <span class="cd-date-sep">日</span>
+        </div>
+      </div>
+      <button class="btn-recommend" onclick="addCountdown()">✅ 添加</button>
+    </div>
+    <div class="maintain-card">
+      <h3>📋 已有倒数日</h3>
+      <div id="countdown-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 密码模态框 -->
+<div class="modal-overlay" id="password-modal">
+  <div class="modal-box">
+    <h3>🔒 身份验证</h3>
+    <p style="font-size:12px;color:#a89080;margin-bottom:12px;">请输入密码以进入数据维护页面</p>
+    <input type="password" id="password-input" placeholder="请输入密码" onkeydown="if(event.key==='Enter')verifyPassword()">
+    <div class="error-msg" id="password-error"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closePasswordModal()">取消</button>
+      <button class="btn-confirm" onclick="verifyPassword()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑模态框 -->
+<div class="edit-modal-overlay" id="edit-modal">
+  <div class="edit-modal-box">
+    <h3>✏️ 编辑餐厅</h3>
+    <input type="hidden" id="edit-index">
+    <div class="form-group">
+      <label>商圈</label>
+      <select id="edit-area" onchange="toggleOtherArea('edit')">
+        <option value="万达及附近">万达及附近</option>
+        <option value="地铁站及较近的欧美金融城">地铁站及较近的欧美金融城</option>
+        <option value="美塘广场及远方的欧美金融城">美塘广场及远方的欧美金融城</option>
+        <option value="再远亿点">再远亿点</option>
+        <option value="其他">其他</option>
+      </select>
+      <input type="text" id="edit-area-other" placeholder="请输入商圈名称" style="display:none; margin-top:8px; width:100%; padding:10px 12px; border:1px solid rgba(212,168,83,0.2); border-radius:4px; font-size:13px; color:#f5e6d0; background:#2c211b; font-family:inherit;">
+    </div>
+    <div class="form-group">
+      <label>店名</label>
+      <input type="text" id="edit-name">
+    </div>
+    <div class="form-group">
+      <label>主要吃什么</label>
+      <select id="edit-food">
+        <option value="面条米粉">面条米粉</option>
+        <option value="牛蛙烤鱼">牛蛙烤鱼</option>
+        <option value="湘赣炒菜">湘赣炒菜</option>
+        <option value="烧烤烤肉">烧烤烤肉</option>
+        <option value="鸡汤饭">鸡汤饭</option>
+        <option value="烤饼鸡柳等小吃">烤饼鸡柳等小吃</option>
+        <option value="清淡的菜">清淡的菜</option>
+        <option value="西式工作餐">西式工作餐</option>
+        <option value="牛羊肉">牛羊肉</option>
+        <option value="普通工作餐">普通工作餐</option>
+        <option value="日式工作餐">日式工作餐</option>
+        <option value="汉堡披萨">汉堡披萨</option>
+        <option value="大杂烩">大杂烩</option>
+        <option value="麻辣烫冒菜">麻辣烫冒菜</option>
+        <option value="朝鲜饭">朝鲜饭</option>
+        <option value="火锅">火锅</option>
+      </select>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div class="form-group">
+        <label>上菜速度 (0-10)</label>
+        <select id="edit-speed"></select>
+      </div>
+      <div class="form-group">
+        <label>距离远近 (0-10)</label>
+        <select id="edit-distance"></select>
+      </div>
+      <div class="form-group">
+        <label>口味辣否 (0-10)</label>
+        <select id="edit-spicy"></select>
+      </div>
+      <div class="form-group">
+        <label>美味程度 (0-10)</label>
+        <select id="edit-tasty"></select>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+      <div class="form-group">
+        <label>可容纳人数 (0-100)</label>
+        <input type="number" id="edit-capacity" min="0" max="100">
+      </div>
+      <div class="form-group">
+        <label>人均价位 (0-1000)</label>
+        <input type="number" id="edit-price" min="0" max="1000">
+      </div>
+      <div class="form-group">
+        <label>建议最小人数</label>
+        <input type="number" id="edit-minpeople" min="1" max="100">
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeEditModal()">取消</button>
+      <button class="btn-confirm" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认弹窗 -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <h3 id="confirm-title">确认操作</h3>
+    <p id="confirm-message" style="font-size:13px;color:#a89080;margin-bottom:16px;"></p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeConfirm(false)">取消</button>
+      <button class="btn-confirm" style="background:#c4453a; color:#fff;" onclick="closeConfirm(true)">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 密码设置弹窗 -->
+<div class="modal-overlay" id="password-setup-modal">
+  <div class="modal-box">
+    <h3>🔒 设置密码</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">是否需要设置密码保护数据维护页面？</p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="skipPasswordSetup()">不需要</button>
+      <button class="btn-confirm" onclick="showPasswordInput()">需要设置</button>
+    </div>
+    <div id="password-setup-input" style="display:none;margin-top:16px;">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">请输入6位数字或字母密码</p>
+      <input type="password" id="new-password-input" placeholder="请输入密码" maxlength="6" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:4px;font-size:15px;text-align:center;background:var(--surface);color:var(--text-light);font-family:inherit;">
+      <div id="password-setup-error" style="color:var(--red);font-size:13px;min-height:20px;margin-top:8px;"></div>
+      <div class="modal-btns" style="margin-top:8px;">
+        <button class="btn-cancel" onclick="skipPasswordSetup()">取消</button>
+        <button class="btn-confirm" onclick="saveNewPassword()">确认设置</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast提示 -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== 初始餐厅数据 ==========
+const INITIAL_DATA = [
+  { 商圈:"万达及附近", 店名:"蛙喔牛蛙", 主要吃什么:"牛蛙烤鱼", 上菜速度:6, 距离远近:2, 口味辣否:7, 可容纳人数:10, 人均价位:45, 美味程度:7, 建议最小人数:2 },
+  { 商圈:"万达及附近", 店名:"妒鱼", 主要吃什么:"牛蛙烤鱼", 上菜速度:6, 距离远近:2, 口味辣否:7, 可容纳人数:10, 人均价位:45, 美味程度:6, 建议最小人数:2 },
+  { 商圈:"万达及附近", 店名:"大碗", 主要吃什么:"湘赣炒菜", 上菜速度:6, 距离远近:2, 口味辣否:8, 可容纳人数:12, 人均价位:40, 美味程度:7, 建议最小人数:4 },
+  { 商圈:"万达及附近", 店名:"淳先生", 主要吃什么:"清淡的菜", 上菜速度:2, 距离远近:2, 口味辣否:1, 可容纳人数:12, 人均价位:40, 美味程度:7, 建议最小人数:2 },
+  { 商圈:"万达及附近", 店名:"厨夫人", 主要吃什么:"普通工作餐", 上菜速度:9, 距离远近:1, 口味辣否:3, 可容纳人数:100, 人均价位:25, 美味程度:2, 建议最小人数:1 },
+  { 商圈:"万达及附近", 店名:"西塔老太太", 主要吃什么:"烧烤烤肉", 上菜速度:5, 距离远近:2, 口味辣否:5, 可容纳人数:12, 人均价位:45, 美味程度:7, 建议最小人数:4 },
+  { 商圈:"万达及附近", 店名:"铁锅炖", 主要吃什么:"大杂烩", 上菜速度:1, 距离远近:2, 口味辣否:6, 可容纳人数:12, 人均价位:45, 美味程度:6, 建议最小人数:4 },
+  { 商圈:"万达及附近", 店名:"福满满", 主要吃什么:"面条米粉", 上菜速度:7, 距离远近:3, 口味辣否:2, 可容纳人数:8, 人均价位:25, 美味程度:6, 建议最小人数:1 },
+  { 商圈:"万达及附近", 店名:"重庆小面", 主要吃什么:"面条米粉", 上菜速度:7, 距离远近:3, 口味辣否:5, 可容纳人数:8, 人均价位:25, 美味程度:6, 建议最小人数:1 },
+  { 商圈:"万达及附近", 店名:"插花牛肉汤", 主要吃什么:"面条米粉", 上菜速度:7, 距离远近:3, 口味辣否:2, 可容纳人数:8, 人均价位:25, 美味程度:7, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"刁四麻辣烫", 主要吃什么:"麻辣烫冒菜", 上菜速度:5, 距离远近:2, 口味辣否:6, 可容纳人数:7, 人均价位:30, 美味程度:6, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"衢州烤饼", 主要吃什么:"烤饼鸡柳等小吃", 上菜速度:7, 距离远近:2, 口味辣否:5, 可容纳人数:7, 人均价位:25, 美味程度:7, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"无名缘", 主要吃什么:"面条米粉", 上菜速度:7, 距离远近:2, 口味辣否:6, 可容纳人数:8, 人均价位:25, 美味程度:6, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"米村拌饭", 主要吃什么:"普通工作餐", 上菜速度:6, 距离远近:3, 口味辣否:5, 可容纳人数:7, 人均价位:30, 美味程度:4, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"麦拌拌", 主要吃什么:"面条米粉", 上菜速度:8, 距离远近:3, 口味辣否:2, 可容纳人数:7, 人均价位:25, 美味程度:6, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"梨花牛肉汤", 主要吃什么:"朝鲜饭", 上菜速度:6, 距离远近:4, 口味辣否:5, 可容纳人数:8, 人均价位:30, 美味程度:5, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"湘太保", 主要吃什么:"湘赣炒菜", 上菜速度:6, 距离远近:4, 口味辣否:8, 可容纳人数:8, 人均价位:30, 美味程度:7, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"黄焖鸡", 主要吃什么:"普通工作餐", 上菜速度:8, 距离远近:4, 口味辣否:2, 可容纳人数:8, 人均价位:25, 美味程度:3, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"池奈", 主要吃什么:"日式工作餐", 上菜速度:6, 距离远近:4, 口味辣否:2, 可容纳人数:7, 人均价位:35, 美味程度:6, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"王春春", 主要吃什么:"鸡汤饭", 上菜速度:7, 距离远近:4, 口味辣否:4, 可容纳人数:7, 人均价位:30, 美味程度:6, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"马记永", 主要吃什么:"面条米粉", 上菜速度:5, 距离远近:4, 口味辣否:2, 可容纳人数:6, 人均价位:35, 美味程度:7, 建议最小人数:1 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"和府捞面", 主要吃什么:"面条米粉", 上菜速度:6, 距离远近:3, 口味辣否:2, 可容纳人数:8, 人均价位:35, 美味程度:6, 建议最小人数:1 },
+  { 商圈:"美塘广场及远方的欧美金融城", 店名:"麻辣香锅", 主要吃什么:"麻辣烫冒菜", 上菜速度:4, 距离远近:7, 口味辣否:7, 可容纳人数:6, 人均价位:35, 美味程度:7, 建议最小人数:2 },
+  { 商圈:"美塘广场及远方的欧美金融城", 店名:"无名蹄花", 主要吃什么:"清淡的菜", 上菜速度:6, 距离远近:7, 口味辣否:2, 可容纳人数:6, 人均价位:30, 美味程度:4, 建议最小人数:1 },
+  { 商圈:"美塘广场及远方的欧美金融城", 店名:"喜贡", 主要吃什么:"湘赣炒菜", 上菜速度:6, 距离远近:7, 口味辣否:8, 可容纳人数:12, 人均价位:35, 美味程度:8, 建议最小人数:3 },
+  { 商圈:"美塘广场及远方的欧美金融城", 店名:"泉市", 主要吃什么:"牛羊肉", 上菜速度:8, 距离远近:7, 口味辣否:2, 可容纳人数:12, 人均价位:45, 美味程度:8, 建议最小人数:3 },
+  { 商圈:"美塘广场及远方的欧美金融城", 店名:"萨莉亚", 主要吃什么:"西式工作餐", 上菜速度:7, 距离远近:7, 口味辣否:1, 可容纳人数:7, 人均价位:30, 美味程度:7, 建议最小人数:1 },
+  { 商圈:"美塘广场及远方的欧美金融城", 店名:"满dong肉剧场", 主要吃什么:"日式工作餐", 上菜速度:6, 距离远近:7, 口味辣否:5, 可容纳人数:8, 人均价位:30, 美味程度:8, 建议最小人数:1 },
+  { 商圈:"美塘广场及远方的欧美金融城", 店名:"椰子鸡", 主要吃什么:"清淡的菜", 上菜速度:7, 距离远近:7, 口味辣否:1, 可容纳人数:8, 人均价位:45, 美味程度:7, 建议最小人数:3 },
+  { 商圈:"再远亿点", 店名:"shen海记", 主要吃什么:"湘赣炒菜", 上菜速度:2, 距离远近:9, 口味辣否:8, 可容纳人数:15, 人均价位:45, 美味程度:9, 建议最小人数:3 },
+  { 商圈:"再远亿点", 店名:"小炉子", 主要吃什么:"烧烤烤肉", 上菜速度:7, 距离远近:9, 口味辣否:7, 可容纳人数:20, 人均价位:45, 美味程度:8, 建议最小人数:4 },
+  { 商圈:"万达及附近", 店名:"成梅炒鸡", 主要吃什么:"大杂烩", 上菜速度:7, 距离远近:2, 口味辣否:3, 可容纳人数:9, 人均价位:45, 美味程度:6, 建议最小人数:2 },
+  { 商圈:"再远亿点", 店名:"彭兜兜大排档", 主要吃什么:"烧烤烤肉", 上菜速度:6, 距离远近:10, 口味辣否:7, 可容纳人数:8, 人均价位:70, 美味程度:7, 建议最小人数:4 },
+  { 商圈:"再远亿点", 店名:"天街烤匠", 主要吃什么:"牛蛙烤鱼", 上菜速度:4, 距离远近:10, 口味辣否:7, 可容纳人数:8, 人均价位:60, 美味程度:8, 建议最小人数:3 },
+  { 商圈:"万达及附近", 店名:"海底捞", 主要吃什么:"火锅", 上菜速度:6, 距离远近:2, 口味辣否:5, 可容纳人数:10, 人均价位:60, 美味程度:5, 建议最小人数:3 },
+  { 商圈:"地铁站及较近的欧美金融城", 店名:"赵美丽", 主要吃什么:"火锅", 上菜速度:5, 距离远近:4, 口味辣否:6, 可容纳人数:10, 人均价位:60, 美味程度:6, 建议最小人数:3 }
+];
+
+let _lastRecommendedNames = [];
+
+// ========== 数据初始化 ==========
+const DATA_VERSION = 'V1-260422';
+
+function getData() {
+  const raw = localStorage.getItem('restaurantData');
+  const savedVersion = localStorage.getItem('restaurantDataVersion');
+  // 版本不匹配或无数据时，用最新的 INITIAL_DATA 覆盖
+  if (!raw || savedVersion !== DATA_VERSION) {
+    localStorage.setItem('restaurantData', JSON.stringify(INITIAL_DATA));
+    localStorage.setItem('restaurantDataVersion', DATA_VERSION);
+    return JSON.parse(JSON.stringify(INITIAL_DATA));
+  }
+  return JSON.parse(raw);
+}
+
+function saveData(data) {
+  localStorage.setItem('restaurantData', JSON.stringify(data));
+  localStorage.setItem('restaurantDataVersion', DATA_VERSION);
+}
+
+// ========== 进食记录 ==========
+function getEatLog() {
+  const raw = localStorage.getItem('eatLog');
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveEatLog(log) {
+  localStorage.setItem('eatLog', JSON.stringify(log));
+}
+
+function chooseRestaurant(name) {
+  const log = getEatLog();
+  log.push({ name: name, time: new Date().toISOString() });
+  saveEatLog(log);
+  showToast(`已记录：今天吃了「${name}」🎉`);
+  // Visual feedback on the card
+  document.querySelectorAll('.btn-choose').forEach(btn => {
+    if (btn.textContent.includes(name)) {
+      btn.textContent = '✅ 已选择';
+      btn.classList.add('chosen');
+      btn.disabled = true;
+      btn.closest('.restaurant-card').style.borderColor = 'var(--gold)';
+    }
+  });
+  // Also disable skip button for this card
+  document.querySelectorAll('.btn-skip').forEach(btn => {
+    if (btn.textContent.includes(name)) {
+      btn.classList.add('skipped');
+      btn.disabled = true;
+    }
+  });
+}
+
+function skipRestaurant(name) {
+  const log = getEatLog();
+  log.push({ name: name, time: new Date().toISOString(), action: 'skip' });
+  saveEatLog(log);
+  showToast(`已记录：不感兴趣「${name}」`);
+  // Visual feedback
+  document.querySelectorAll('.btn-skip').forEach(btn => {
+    if (btn.textContent.includes(name)) {
+      btn.textContent = '👎 已跳过';
+      btn.classList.add('skipped');
+      btn.disabled = true;
+      // Also disable the choose button for this card
+      const row = btn.closest('.btn-action-row');
+      if (row) row.querySelector('.btn-choose').style.opacity = '0.3';
+    }
+  });
+}
+
+// ========== 日期显示 ==========
+function updateDate() {
+  const now = new Date();
+  const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
+  const m = now.getMonth() + 1;
+  const d = now.getDate();
+  const w = weekdays[now.getDay()];
+  document.getElementById('date-display').textContent = `${m}月${d}日-${w}`;
+}
+
+// ========== 推荐算法核心逻辑 ==========
+
+/**
+ * 获取多选值
+ */
+function getMultiSelectValues(dropdownId) {
+  if (dropdownId === 'prefer-dropdown') {
+    return Array.from(document.querySelectorAll('#prefer-chips .chip.selected')).map(c => c.dataset.value);
+  }
+  if (dropdownId === 'avoid-dropdown') {
+    return Array.from(document.querySelectorAll('#avoid-chips .chip.selected')).map(c => c.dataset.value);
+  }
+  const dropdown = document.getElementById(dropdownId);
+  return Array.from(dropdown.querySelectorAll('input:checked')).map(cb => cb.value);
+}
+
+// ========== 推荐算法核心逻辑 ==========
+
+/**
+ * 筛选餐厅
+ * @param {Array} restaurants - 所有餐厅数据
+ * @param {Object} params - 用户输入参数
+ * @param {Object} relaxFlags - 标记哪些条件被放宽
+ * @returns {Array} 筛选后的餐厅列表
+ */
+function filterRestaurants(restaurants, params, relaxFlags) {
+  return restaurants.filter(r => {
+    // 1. 可容纳人数筛选（除非放宽）
+    if (!relaxFlags.relaxCapacity && r.可容纳人数 < (params.people - 1)) {
+      return false;
+    }
+    // 1.5 建议最小人数筛选
+    if (r.建议最小人数 && r.建议最小人数 > params.people) {
+      return false;
+    }
+    // 2. 时间紧急筛选
+    if (params.urgency === '很急') {
+      if (r.上菜速度 < 6 || r.距离远近 > 4) return false;
+    }
+    // 2.5 恶劣天气筛选：下雨/下雪/大风/雷雨/高温>=33度时不推荐距离>=4的餐厅
+    if (window._badWeather) {
+      if (r.距离远近 > 4) return false;
+    }
+    // 3. 不想吃什么筛选（除非放宽）
+    if (!relaxFlags.relaxAvoid) {
+      const avoid = params.avoid;
+      if (avoid.includes('味道大的')) {
+        // 剔除味道大的品类餐厅，以及福满满
+        if (['牛蛙烤鱼','烧烤烤肉','湘赣炒菜','牛羊肉','火锅'].includes(r.主要吃什么)) return false;
+        if (r.店名 === '福满满') return false;
+      }
+      if (avoid.includes('距离远的')) {
+        if (r.距离远近 >= 5) return false;
+      }
+      if (avoid.includes('平平无奇的')) {
+        if (r.口味辣否 <= 4) return false;
+        if (['面条米粉','普通工作餐','鸡汤饭','日式工作餐','汉堡披萨','麻辣烫冒菜','朝鲜饭','烤饼鸡柳等小吃'].includes(r.主要吃什么)) return false;
+      }
+      if (avoid.includes('要做很久的')) {
+        if (r.上菜速度 <= 5) return false;
+      }
+    }
+    return true;
+  });
+}
+
+/**
+ * 计算综合得分
+ * @param {Object} r - 餐厅数据
+ * @returns {number} 综合得分
+ */
+function calcScore(r) {
+  return (
+    r.上菜速度 * 0.25 +
+    r.美味程度 * 0.40 +
+    (r.可容纳人数 / 10) * 0.10 +
+    (r.人均价位 / 100) * 0.20 -
+    r.距离远近 * 0.10 -
+    r.口味辣否 * 0.05
+  );
+}
+
+function getRestaurantStats() {
+  const log = getEatLog();
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const recent = log.filter(entry => new Date(entry.time) >= thirtyDaysAgo);
+  const stats = {};
+  recent.forEach(entry => {
+    if (!stats[entry.name]) stats[entry.name] = { recommended: 0, chosen: 0, skipped: 0 };
+    if (entry.action === 'show') {
+      stats[entry.name].recommended += 1;
+    } else if (entry.action === 'skip') {
+      stats[entry.name].skipped += 1;
+    } else {
+      // action is undefined (就是你了) or anything else = chosen
+      stats[entry.name].chosen += 1;
+    }
+  });
+  return stats;
+}
+
+function getChooseRate(name, stats) {
+  const s = stats[name];
+  if (!s || s.recommended === 0) return 0;
+  return s.chosen / s.recommended;
+}
+
+function getSkipRate(name, stats) {
+  const s = stats[name];
+  if (!s || s.recommended === 0) return 0;
+  return s.skipped / s.recommended;
+}
+
+/**
+ * 排序餐厅：chooseRate TOP3 first > score desc > skipRate TOP3 last
+ * @param {Array} restaurants - 筛选后的餐厅
+ * @param {Array} prefer - 用户特别想吃什么
+ * @returns {Array} 排序后的餐厅（带score字段）
+ */
+function sortRestaurants(restaurants, prefer) {
+  const stats = getRestaurantStats();
+  // Calculate chooseRate and skipRate for each restaurant
+  const withStats = restaurants.map(r => {
+    const score = calcScore(r);
+    let hitPrefer = false;
+    if (prefer && prefer.length > 0) hitPrefer = prefer.includes(r.主要吃什么);
+    const chooseRate = getChooseRate(r.店名, stats);
+    const skipRate = getSkipRate(r.店名, stats);
+    return { ...r, score, hitPrefer, chooseRate, skipRate };
+  });
+
+  // Sort: chooseRate TOP3 first > score desc > skipRate TOP3 last
+  // Get top3 chooseRate names (excluding 0%)
+  const chooseRateSorted = withStats.filter(r => r.chooseRate > 0).sort((a, b) => b.chooseRate - a.chooseRate);
+  const chooseRateTop3 = new Set(chooseRateSorted.slice(0, 3).map(r => r.店名));
+
+  // Get top3 skipRate names (excluding 0%)
+  const skipRateSorted = withStats.filter(r => r.skipRate > 0).sort((a, b) => b.skipRate - a.skipRate);
+  const skipRateTop3 = new Set(skipRateSorted.slice(0, 3).map(r => r.店名));
+
+  withStats.sort((a, b) => {
+    // 1. Choose rate TOP3 first
+    const aIsChooseTop = chooseRateTop3.has(a.店名);
+    const bIsChooseTop = chooseRateTop3.has(b.店名);
+    if (aIsChooseTop && !bIsChooseTop) return -1;
+    if (!aIsChooseTop && bIsChooseTop) return 1;
+
+    // 2. Skip rate TOP3 last
+    const aIsSkipTop = skipRateTop3.has(a.店名);
+    const bIsSkipTop = skipRateTop3.has(b.店名);
+    if (aIsSkipTop && !bIsSkipTop) return 1;
+    if (!aIsSkipTop && bIsSkipTop) return -1;
+
+    // 3. Hit prefer
+    if (a.hitPrefer && !b.hitPrefer) return -1;
+    if (!a.hitPrefer && b.hitPrefer) return 1;
+
+    // 4. Score desc
+    return b.score - a.score;
+  });
+
+  return withStats;
+}
+
+/**
+ * 判断是否为盲盒模式（用户未选任何喜好和厌恶）
+ */
+function isBlindBoxMode() {
+  const avoid = getMultiSelectValues('avoid-dropdown');
+  const prefer = getMultiSelectValues('prefer-dropdown');
+  return avoid.length === 0 && prefer.length === 0;
+}
+
+/**
+ * 更新推荐按钮文案
+ */
+function updateGoButtonText() {
+  const btn = document.getElementById('btn-go');
+  const people = parseInt(document.getElementById('people-count').value) || 2;
+  const urgency = document.getElementById('urgency').value;
+  const avoid = getMultiSelectValues('avoid-dropdown');
+  const prefer = getMultiSelectValues('prefer-dropdown');
+  let newText = '🎯 开始推荐';
+  if (people >= 20) newText = '🍻 是要梁山好汉结义吗';
+  else if (people >= 10) newText = '🎉 今天人丁兴旺了';
+  else if (urgency === '很急') newText = '🏃 急急急 我是急急国王';
+  else if (avoid.includes('平平无奇的')) newText = '🔥 今天是个大日子';
+  else if (avoid.length === 0 && prefer.length === 0) newText = '🎲 我要开盲盒';
+  if (btn.textContent !== newText) {
+    btn.style.opacity = '0.5';
+    setTimeout(() => { btn.textContent = newText; btn.style.opacity = '1'; }, 150);
+  }
+}
+
+/**
+ * 盲盒模式：从符合人数和时间条件的餐厅中随机选3家
+ */
+function blindBoxRecommend(isRegenerate) {
+  const restaurants = getData();
+  const params = {
+    people: parseInt(document.getElementById('people-count').value) || 2,
+    urgency: document.getElementById('urgency').value,
+    avoid: [],
+    prefer: []
+  };
+
+  const resultSection = document.getElementById('result-section');
+  const resultList = document.getElementById('result-list');
+  const degradeInfo = document.getElementById('degrade-info');
+
+  if (!isRegenerate) _lastRecommendedNames = [];
+
+  resultSection.classList.add('show');
+  degradeInfo.innerHTML = '<span class="degrade-tag">🎲 盲盒模式 · 随机推荐</span>';
+
+  // 仅筛选人数和时间条件
+  const filtered = filterRestaurants(restaurants, params, { relaxCapacity: false, relaxPrefer: false, relaxAvoid: false });
+
+  if (filtered.length === 0) {
+    // 放宽人数再试
+    const relaxed = filterRestaurants(restaurants, params, { relaxCapacity: true, relaxPrefer: false, relaxAvoid: false });
+    if (relaxed.length === 0) {
+      resultList.innerHTML = `
+        <div class="no-result">
+          <div class="emoji">😢</div>
+          <p>没有符合您需求的餐厅，请调整条件或新增食堂</p>
+        </div>
+      `;
+      return;
+    }
+    // 从放宽后的结果中随机选
+    const shuffled = relaxed.sort(() => Math.random() - 0.5);
+    const available = shuffled.filter(r => !_lastRecommendedNames.includes(r.店名));
+    const pick = available.length >= 3 ? available : shuffled;
+    const top3 = pick.slice(0, 3).map(r => ({ ...r, score: calcScore(r), hitPrefer: false }));
+    _lastRecommendedNames.push(...top3.map(r => r.店名));
+    renderResults(top3);
+    return;
+  }
+
+  // 随机打乱后取前3
+  const shuffled = filtered.sort(() => Math.random() - 0.5);
+  const available = shuffled.filter(r => !_lastRecommendedNames.includes(r.店名));
+  const pick = available.length >= 3 ? available : shuffled;
+  const top3 = pick.slice(0, 3).map(r => ({ ...r, score: calcScore(r), hitPrefer: false }));
+  _lastRecommendedNames.push(...top3.map(r => r.店名));
+  renderResults(top3);
+}
+
+/**
+ * 执行推荐（含降级策略）
+ */
+function recommend(isRegenerate) {
+  // 盲盒模式：随机推荐
+  if (isBlindBoxMode()) {
+    blindBoxRecommend(isRegenerate);
+    return;
+  }
+
+  const restaurants = getData();
+  const params = {
+    people: parseInt(document.getElementById('people-count').value) || 2,
+    urgency: document.getElementById('urgency').value,
+    avoid: getMultiSelectValues('avoid-dropdown'),
+    prefer: getMultiSelectValues('prefer-dropdown')
+  };
+
+  const resultSection = document.getElementById('result-section');
+  const resultList = document.getElementById('result-list');
+  const degradeInfo = document.getElementById('degrade-info');
+
+  if (!isRegenerate) _lastRecommendedNames = [];
+
+  resultSection.classList.add('show');
+  degradeInfo.innerHTML = '';
+
+  // 降级策略：逐步放宽条件
+  // 注意：prefer（特别想吃什么）仅用于排序优先级，不是筛选条件
+  // 因此放宽偏好意味着不再优先排序命中偏好的餐厅，但不改变筛选范围
+  const strategies = [
+    { relaxCapacity: false, relaxPrefer: false, relaxAvoid: false, tag: '' },
+    { relaxCapacity: true,  relaxPrefer: false, relaxAvoid: false, tag: '⚠️ 人数条件已放宽' },
+    { relaxCapacity: true,  relaxPrefer: true,  relaxAvoid: false, tag: '⚠️ 人数条件已放宽 · 口味偏好已放宽' },
+    { relaxCapacity: true,  relaxPrefer: true,  relaxAvoid: true, tag: '⚠️ 人数条件已放宽 · 忌口条件已放宽' },
+  ];
+
+  for (const strategy of strategies) {
+    const filtered = filterRestaurants(restaurants, params, strategy);
+    const prefer = strategy.relaxPrefer ? [] : params.prefer;
+    const sorted = sortRestaurants(filtered, prefer);
+    const available = sorted.filter(r => !_lastRecommendedNames.includes(r.店名));
+    const top3 = available.slice(0, 3);
+
+    if (top3.length > 0) {
+      degradeInfo.innerHTML = strategy.tag ? `<span class="degrade-tag">${strategy.tag}</span>` : '';
+      renderResults(top3);
+      _lastRecommendedNames.push(...top3.map(r => r.店名));
+      return;
+    }
+  }
+
+  // 无结果
+  resultList.innerHTML = `
+    <div class="no-result">
+      <div class="emoji">😢</div>
+      <p>没有符合您需求的餐厅，请调整条件或新增食堂</p>
+    </div>
+  `;
+}
+
+// ========== 店铺推荐标签 ==========
+function getAreaTip(r) {
+  if (r.商圈 === '万达及附近') return '🥤 速战速决，回来还能顺便瑞一下';
+  if (r.商圈 === '地铁站及较近的欧美金融城' && r.店名 !== '赵美丽') return '🍦 来都来了，吃个蜜雪冰淇淋再走';
+  if (['麻辣香锅','无名蹄花','喜贡','泉市'].includes(r.店名)) return '🧋 谁不想急头白脸喝杯一点点呢';
+  if (['萨莉亚','满dong肉剧场','椰子鸡'].includes(r.店名)) return '🧋 楼上有coco楼下有喜茶和茉莉奶白嘿嘿';
+  return '';
+}
+
+function getShopTags(r) {
+  const tags = [];
+  if (r.人均价位 <= 30) tags.push('💰 经济实惠');
+  if (r.距离远近 <= 4) tags.push('🏃 快去快回');
+  if (r.上菜速度 >= 6) tags.push('⚡ 上菜很快');
+  if (r.美味程度 >= 7) tags.push('😋 好吃好吃');
+  if (r.可容纳人数 >= 8) tags.push('👥 来多少都能坐下');
+  return tags;
+}
+
+/**
+ * 渲染推荐结果
+ */
+function renderResults(top3) {
+  // Record recommendation impressions
+  const log = getEatLog();
+  top3.forEach(r => {
+    log.push({ name: r.店名, time: new Date().toISOString(), action: 'show' });
+  });
+  saveEatLog(log);
+
+  const resultList = document.getElementById('result-list');
+  resultList.innerHTML = top3.map((r, i) => {
+    const tags = getShopTags(r);
+    const tagsStr = tags.length > 0 ? ' · ' + tags.join(' · ') : '';
+    const areaTip = getAreaTip(r);
+    const tipHtml = areaTip ? `<div class="area-tip">${areaTip}</div>` : '';
+    return `
+    <div class="restaurant-card">
+      <div class="rank-badge">${i + 1}</div>
+      <div class="restaurant-name">${r.店名}</div>
+      <div class="restaurant-area">📍 ${r.商圈}${r.hitPrefer ? ' · ✨ 命中你的口味偏好' : ''}${tagsStr}</div>
+      ${tipHtml}
+      <div class="restaurant-brief">
+        <span>🍜 ${r.主要吃什么}</span>
+        <span>⚡ ${r.上菜速度}/10</span>
+        <span>💰 ¥${r.人均价位}</span>
+      </div>
+      <div class="restaurant-detail-toggle" onclick="this.nextElementSibling.classList.toggle('expanded');this.querySelector('span').textContent=this.nextElementSibling.classList.contains('expanded')?'收起详情':'查看详情'">
+        <span>查看详情</span>
+      </div>
+      <div class="restaurant-detail">
+        <div class="info-item"><span class="label">📏 距离：</span><span class="value">${r.距离远近}/10</span></div>
+        <div class="info-item"><span class="label">🌶️ 辣度：</span><span class="value">${r.口味辣否}/10</span></div>
+        <div class="info-item"><span class="label">👥 容纳：</span><span class="value">${r.可容纳人数}人</span></div>
+      </div>
+      <div class="score-display">🏆 综合得分：${r.score.toFixed(1)}　😋 美味程度：${r.美味程度}/10</div>
+      <div class="btn-action-row">
+        <button class="btn-choose" onclick="chooseRestaurant('${r.店名.replace(/'/g, "\\'")}')">✅ 就是你了</button>
+        <button class="btn-skip" onclick="skipRestaurant('${r.店名.replace(/'/g, "\\'")}')">👎 不感兴趣</button>
+      </div>
+    </div>
+  `}).join('');
+  // 显示"换一批"按钮
+  document.getElementById('btn-regenerate').style.display = 'inline-block';
+  // Auto-scroll to results
+  setTimeout(() => {
+    document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+// ========== 重新生成 ==========
+function regenerate() {
+  recommend(true);
+}
+
+// ========== 密码验证 ==========
+function openPasswordModal() {
+  const hasPassword = localStorage.getItem('appPassword');
+  if (!hasPassword) {
+    // First time - ask user if they want to set a password
+    showPasswordSetupDialog();
+  } else {
+    // Has password - verify
+    document.getElementById('password-modal').classList.add('show');
+    document.getElementById('password-input').value = '';
+    document.getElementById('password-error').textContent = '';
+    setTimeout(() => document.getElementById('password-input').focus(), 100);
+  }
+}
+
+function closePasswordModal() {
+  document.getElementById('password-modal').classList.remove('show');
+}
+
+function verifyPassword() {
+  const pwd = document.getElementById('password-input').value.toLowerCase();
+  const stored = (localStorage.getItem('appPassword') || '').toLowerCase();
+  if (pwd === stored) {
+    closePasswordModal();
+    showMaintainPage();
+  } else {
+    document.getElementById('password-error').textContent = '发现内鬼终止交易';
+    document.getElementById('password-input').value = '';
+    document.getElementById('password-input').focus();
+  }
+}
+
+function showPasswordSetupDialog() {
+  document.getElementById('password-setup-modal').classList.add('show');
+  document.getElementById('password-setup-input').style.display = 'none';
+}
+
+function showPasswordInput() {
+  document.getElementById('password-setup-input').style.display = 'block';
+  setTimeout(() => document.getElementById('new-password-input').focus(), 100);
+}
+
+function skipPasswordSetup() {
+  localStorage.setItem('appPassword', 'NO_PASSWORD');
+  document.getElementById('password-setup-modal').classList.remove('show');
+  showMaintainPage();
+}
+
+function saveNewPassword() {
+  const pwd = document.getElementById('new-password-input').value;
+  if (!/^[a-zA-Z0-9]{6}$/.test(pwd)) {
+    document.getElementById('password-setup-error').textContent = '密码必须为6位数字或字母';
+    return;
+  }
+  localStorage.setItem('appPassword', pwd.toLowerCase());
+  document.getElementById('password-setup-modal').classList.remove('show');
+  showToast('密码设置成功');
+  showMaintainPage();
+}
+
+// ========== 页面切换 ==========
+function switchPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.remove('active');
+  });
+  const target = document.getElementById(pageId);
+  // Force re-trigger animation
+  void target.offsetWidth;
+  target.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function showMaintainPage() {
+  switchPage('maintain-page');
+  renderRestaurantTable();
+}
+
+// ========== 推荐页顶部提示文案 ==========
+function showRecommendBanner() {
+  const banner = document.getElementById('weather-banner');
+  if (!banner) return;
+  // Check if any countdown is today or within 2 days
+  const customs = getCountdowns();
+  const now = new Date();
+  const year = now.getFullYear();
+  let nearHoliday = false;
+  customs.forEach(d => {
+    const resolved = resolveCountdownDate(d.date, year);
+    const diff = Math.round((resolved.date - now) / (1000 * 60 * 60 * 24));
+    if (diff >= 0 && diff <= 2) nearHoliday = true;
+  });
+  // Also check legal holidays
+  const today = new Date(year, now.getMonth(), now.getDate());
+  const holidayInfo = getNearestHoliday(today);
+  if (holidayInfo) {
+    const days = parseInt(holidayInfo.text.match(/(\d+)日/)?.[1] || 0);
+    if (days <= 2) nearHoliday = true;
+  }
+  
+  if (nearHoliday) {
+    banner.textContent = '🎊 快放假了，吃顿好的！';
+    banner.className = 'weather-banner holiday';
+    banner.style.display = 'block';
+  } else if (window._badWeather) {
+    banner.textContent = '🌧️ 天气太差，就近吃吃';
+    banner.className = 'weather-banner bad-weather';
+    banner.style.display = 'block';
+  } else if (window._weatherNice) {
+    banner.textContent = '☀️ 出门走走，换换心情';
+    banner.className = 'weather-banner nice-weather';
+    banner.style.display = 'block';
+  } else {
+    banner.textContent = '🤔 吃点啥呢';
+    banner.className = 'weather-banner default-mood';
+    banner.style.display = 'block';
+  }
+}
+
+function showRecommendPage() {
+  switchPage('recommend-page');
+  showRecommendBanner();
+  // 清空上次推荐结果
+  document.getElementById('result-section').classList.remove('show');
+  document.getElementById('result-list').innerHTML = '';
+  document.getElementById('degrade-info').innerHTML = '';
+  document.getElementById('btn-regenerate').style.display = 'none';
+  _lastRecommendedNames = [];
+}
+
+// ========== 数据维护：渲染餐厅列表 ==========
+function renderRestaurantTable() {
+  const data = getData();
+  const container = document.getElementById('restaurant-list');
+  if (data.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#b0aea5;padding:30px 0;">暂无餐厅数据</div>';
+    return;
+  }
+  container.innerHTML = data.map((r, i) => `
+    <div class="restaurant-list-item">
+      <div class="rli-info">
+        <div class="rli-name">${r.店名}</div>
+        <div class="rli-meta">📍 ${r.商圈} · 🍜 ${r.主要吃什么} · 💰 ¥${r.人均价位} · ⚡${r.上菜速度} · 📏${r.距离远近} · 🌶️${r.口味辣否} · 😋${r.美味程度} · 👥≥${r.建议最小人数 || 1}人</div>
+      </div>
+      <div class="rli-actions">
+        <button class="btn-edit" onclick="openEditModal(${i})">编辑</button>
+        <button class="btn-delete" onclick="deleteRestaurant(${i})">删除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ========== 数据维护：新增餐厅 ==========
+function addRestaurant() {
+  const areaSelect = document.getElementById('add-area');
+  let area = areaSelect.value;
+  if (area === '其他') {
+    area = document.getElementById('add-area-other').value.trim();
+    if (!area) { showToast('请输入商圈名称'); return; }
+  }
+  if (!area) { showToast('请选择商圈'); return; }
+
+  const name = document.getElementById('add-name').value.trim();
+  if (!name) { showToast('请输入店名'); return; }
+
+  const food = document.getElementById('add-food').value;
+  if (!food) { showToast('请选择主要吃什么'); return; }
+
+  const speed = document.getElementById('add-speed').value;
+  const distance = document.getElementById('add-distance').value;
+  const spicy = document.getElementById('add-spicy').value;
+  const tasty = document.getElementById('add-tasty').value;
+  if (speed === '' || distance === '' || spicy === '' || tasty === '') {
+    showToast('请完成所有评分选择'); return;
+  }
+
+  const capacity = document.getElementById('add-capacity').value;
+  const price = document.getElementById('add-price').value;
+  if (capacity === '' || price === '') { showToast('请填写人数和价位'); return; }
+
+  const minPeople = document.getElementById('add-minpeople').value;
+  if (minPeople === '') { showToast('请填写建议最小人数'); return; }
+
+  const data = getData();
+  data.push({
+    商圈: area,
+    店名: name,
+    主要吃什么: food,
+    上菜速度: parseInt(speed),
+    距离远近: parseInt(distance),
+    口味辣否: parseInt(spicy),
+    可容纳人数: parseInt(capacity),
+    人均价位: parseInt(price),
+    美味程度: parseInt(tasty),
+    建议最小人数: parseInt(minPeople)
+  });
+  saveData(data);
+  showToast('新增成功 ✅');
+  clearAddForm();
+  renderRestaurantTable();
+}
+
+function clearAddForm() {
+  document.getElementById('add-area').value = '';
+  document.getElementById('add-area-other').value = '';
+  document.getElementById('add-area-other').style.display = 'none';
+  document.getElementById('add-name').value = '';
+  document.getElementById('add-food').value = '';
+  document.getElementById('add-speed').value = '';
+  document.getElementById('add-distance').value = '';
+  document.getElementById('add-spicy').value = '';
+  document.getElementById('add-tasty').value = '';
+  document.getElementById('add-capacity').value = '';
+  document.getElementById('add-price').value = '';
+  document.getElementById('add-minpeople').value = '';
+}
+
+// ========== 数据维护：编辑餐厅 ==========
+function openEditModal(index) {
+  const data = getData();
+  const r = data[index];
+  document.getElementById('edit-index').value = index;
+
+  // 处理商圈
+  const areaOptions = ['万达及附近','地铁站及较近的欧美金融城','美塘广场及远方的欧美金融城','再远亿点'];
+  const editArea = document.getElementById('edit-area');
+  const editAreaOther = document.getElementById('edit-area-other');
+  if (areaOptions.includes(r.商圈)) {
+    editArea.value = r.商圈;
+    editAreaOther.style.display = 'none';
+    editAreaOther.value = '';
+  } else {
+    editArea.value = '其他';
+    editAreaOther.style.display = 'block';
+    editAreaOther.value = r.商圈;
+  }
+
+  document.getElementById('edit-name').value = r.店名;
+  document.getElementById('edit-food').value = r.主要吃什么;
+  document.getElementById('edit-speed').value = r.上菜速度;
+  document.getElementById('edit-distance').value = r.距离远近;
+  document.getElementById('edit-spicy').value = r.口味辣否;
+  document.getElementById('edit-tasty').value = r.美味程度;
+  document.getElementById('edit-capacity').value = r.可容纳人数;
+  document.getElementById('edit-price').value = r.人均价位;
+  document.getElementById('edit-minpeople').value = r.建议最小人数 || 1;
+
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('show');
+}
+
+// ========== 滑动关闭模态框 ==========
+(function() {
+  const modal = document.getElementById('edit-modal');
+  let startY = 0;
+  let currentY = 0;
+  modal.addEventListener('touchstart', function(e) {
+    startY = e.touches[0].clientY;
+    modal.style.transition = 'none';
+  }, { passive: true });
+  modal.addEventListener('touchmove', function(e) {
+    currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
+    if (diff > 0) {
+      modal.querySelector('.edit-modal-box').style.transform = `translateY(${diff}px)`;
+      modal.querySelector('.edit-modal-box').style.opacity = 1 - diff / 300;
+    }
+  }, { passive: true });
+  modal.addEventListener('touchend', function() {
+    const diff = currentY - startY;
+    modal.querySelector('.edit-modal-box').style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+    if (diff > 100) {
+      closeEditModal();
+    }
+    modal.querySelector('.edit-modal-box').style.transform = '';
+    modal.querySelector('.edit-modal-box').style.opacity = '';
+    startY = 0;
+    currentY = 0;
+  }, { passive: true });
+})();
+
+(function() {
+  const modal = document.getElementById('password-modal');
+  let startY = 0;
+  let currentY = 0;
+  modal.addEventListener('touchstart', function(e) {
+    startY = e.touches[0].clientY;
+    modal.style.transition = 'none';
+  }, { passive: true });
+  modal.addEventListener('touchmove', function(e) {
+    currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
+    if (diff > 0) {
+      modal.querySelector('.modal-box').style.transform = `translateY(${diff}px)`;
+      modal.querySelector('.modal-box').style.opacity = 1 - diff / 300;
+    }
+  }, { passive: true });
+  modal.addEventListener('touchend', function() {
+    const diff = currentY - startY;
+    modal.querySelector('.modal-box').style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+    if (diff > 100) {
+      closePasswordModal();
+    }
+    modal.querySelector('.modal-box').style.transform = '';
+    modal.querySelector('.modal-box').style.opacity = '';
+    startY = 0;
+    currentY = 0;
+  }, { passive: true });
+})();
+
+function saveEdit() {
+  const index = parseInt(document.getElementById('edit-index').value);
+  const data = getData();
+
+  const areaSelect = document.getElementById('edit-area');
+  let area = areaSelect.value;
+  if (area === '其他') {
+    area = document.getElementById('edit-area-other').value.trim();
+    if (!area) { showToast('请输入商圈名称'); return; }
+  }
+
+  data[index] = {
+    商圈: area,
+    店名: document.getElementById('edit-name').value.trim(),
+    主要吃什么: document.getElementById('edit-food').value,
+    上菜速度: parseInt(document.getElementById('edit-speed').value),
+    距离远近: parseInt(document.getElementById('edit-distance').value),
+    口味辣否: parseInt(document.getElementById('edit-spicy').value),
+    可容纳人数: parseInt(document.getElementById('edit-capacity').value),
+    人均价位: parseInt(document.getElementById('edit-price').value),
+    美味程度: parseInt(document.getElementById('edit-tasty').value),
+    建议最小人数: parseInt(document.getElementById('edit-minpeople').value)
+  };
+  saveData(data);
+  closeEditModal();
+  showToast('保存成功 ✅');
+  renderRestaurantTable();
+}
+
+// ========== 数据维护：删除餐厅 ==========
+let _confirmCallback = null;
+function showConfirm(title, message, callback) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').textContent = message;
+  document.getElementById('confirm-modal').classList.add('show');
+  _confirmCallback = callback;
+}
+function closeConfirm(result) {
+  document.getElementById('confirm-modal').classList.remove('show');
+  if (_confirmCallback) _confirmCallback(result);
+  _confirmCallback = null;
+}
+
+function deleteRestaurant(index) {
+  const data = getData();
+  const name = data[index] ? data[index].店名 : '';
+  showConfirm('确认删除', `确定要删除「${name}」吗？此操作不可撤销。`, function(confirmed) {
+    if (confirmed) {
+      data.splice(index, 1);
+      saveData(data);
+      showToast('已删除');
+      renderRestaurantTable();
+    }
+  });
+}
+
+// ========== 商圈"其他"选项切换 ==========
+function toggleOtherArea(prefix) {
+  const select = document.getElementById(`${prefix}-area`);
+  const otherInput = document.getElementById(`${prefix}-area-other`);
+  if (select.value === '其他') {
+    otherInput.style.display = 'block';
+    otherInput.focus();
+  } else {
+    otherInput.style.display = 'none';
+    otherInput.value = '';
+  }
+}
+
+// ========== Toast提示 ==========
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ========== 进食记录页面 ==========
+function showEatLogPage() {
+  switchPage('eatlog-page');
+  renderEatLog();
+}
+
+function clearEatLog() {
+  showConfirm('清除记录', '确定要清除所有进食记录吗？此操作不可撤销。', function(confirmed) {
+    if (confirmed) {
+      localStorage.removeItem('eatLog');
+      renderEatLog();
+      showToast('记录已清除');
+    }
+  });
+}
+
+function renderEatLog() {
+  const stats = getRestaurantStats();
+  const names = Object.keys(stats);
+  const container = document.getElementById('eatlog-list');
+  if (names.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:40px 0;">
+        <div style="font-size:48px;margin-bottom:12px;opacity:0.4;">🍽️</div>
+        <div style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">暂无进食记录</div>
+        <button class="btn-recommend" style="max-width:200px;margin:0 auto;" onclick="switchPage('recommend-page');showRecommendBanner();">去选一家吃</button>
+      </div>
+    `;
+    return;
+  }
+
+  // Default sort: by chosen count desc
+  let sortKey = 'chosen';
+  let sortDir = 'desc';
+
+  function buildTable() {
+    const sorted = names.map(name => {
+      const s = stats[name];
+      const chooseRate = s.recommended > 0 ? (s.chosen / s.recommended * 100).toFixed(2) + '%' : '-';
+      const skipRate = s.recommended > 0 ? (s.skipped / s.recommended * 100).toFixed(2) + '%' : '-';
+      return { name, ...s, chooseRate, skipRate };
+    }).sort((a, b) => {
+      let va, vb;
+      if (sortKey === 'name') {
+        va = a.name; vb = b.name;
+        return sortDir === 'desc' ? vb.localeCompare(va) : va.localeCompare(vb);
+      }
+      if (sortKey === 'chooseRate' || sortKey === 'skipRate') {
+        va = a[sortKey] === '-' ? -1 : parseFloat(a[sortKey]);
+        vb = b[sortKey] === '-' ? -1 : parseFloat(b[sortKey]);
+      } else {
+        va = a[sortKey] || 0;
+        vb = b[sortKey] || 0;
+      }
+      return sortDir === 'desc' ? vb - va : va - vb;
+    });
+
+    container.innerHTML = `
+      <div class="eatlog-sort-bar">
+        ${['recommended','chosen','skipped','chooseRate','skipRate'].map(key => {
+          const labels = { recommended: '推荐次数', chosen: '选中次数', skipped: '点踩次数', chooseRate: '选中率', skipRate: '点踩率' };
+          const active = sortKey === key;
+          return `<button class="sort-btn ${active ? 'active' : ''}" onclick="window._eatlogSort('${key}')">${labels[key]} ${active ? (sortDir === 'desc' ? '↓' : '↑') : ''}</button>`;
+        }).join('')}
+      </div>
+      <div class="eatlog-table">
+        <div class="eatlog-table-header">
+          <span>店铺</span><span>推荐</span><span>选中</span><span>点踩</span><span>选中率</span><span>点踩率</span>
+        </div>
+        ${sorted.map(r => `
+          <div class="eatlog-table-row">
+            <span class="eatlog-table-name">${r.name}</span>
+            <span>${r.recommended}</span>
+            <span style="color:var(--green)">${r.chosen}</span>
+            <span style="color:var(--red)">${r.skipped}</span>
+            <span>${r.chooseRate}</span>
+            <span>${r.skipRate}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  window._eatlogSort = function(key) {
+    if (sortKey === key) sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    else { sortKey = key; sortDir = 'desc'; }
+    buildTable();
+  };
+
+  buildTable();
+}
+
+// ========== 初始化下拉选项（0-10） ==========
+function initScoreSelects() {
+  const ids = ['add-speed','add-distance','add-spicy','add-tasty','edit-speed','edit-distance','edit-spicy','edit-tasty'];
+  ids.forEach(id => {
+    const sel = document.getElementById(id);
+    for (let i = 0; i <= 10; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = i;
+      sel.appendChild(opt);
+    }
+  });
+}
+
+// ========== 事件绑定 ==========
+document.getElementById('btn-start').addEventListener('click', showRecommendPage);
+document.getElementById('btn-maintain').addEventListener('click', openPasswordModal);
+document.getElementById('btn-eatlog').addEventListener('click', showEatLogPage);
+document.getElementById('btn-back').addEventListener('click', function() { switchPage('home-page'); });
+document.getElementById('btn-back-home').addEventListener('click', function() { switchPage('home-page'); });
+document.getElementById('btn-back-eatlog').addEventListener('click', function() { switchPage('home-page'); });
+document.getElementById('btn-back-version').addEventListener('click', function() { switchPage('home-page'); });
+document.getElementById('btn-back-countdown').addEventListener('click', function() { switchPage('home-page'); });
+document.getElementById('btn-go').addEventListener('click', recommend);
+document.getElementById('people-count').addEventListener('input', updateGoButtonText);
+document.getElementById('urgency').addEventListener('change', updateGoButtonText);
+
+// ========== 杭州天气 ==========
+function loadWeather() {
+  // 使用 wttr.in 免费 API 获取杭州天气（无需key）
+  fetch('https://wttr.in/Hangzhou?format=j1', { headers: { 'Accept-Language': 'zh' } })
+    .then(r => r.json())
+    .then(data => {
+      const current = data.current_condition[0];
+      const temp = current.temp_C;
+      const desc = current.lang_zh && current.lang_zh[0] ? current.lang_zh[0].value : current.weatherDesc[0].value;
+      const humidity = current.humidity;
+      const wind = current.windspeedKmph;
+      const feelsLike = current.FeelsLikeC;
+
+      // 天气图标映射
+      const code = parseInt(current.weatherCode);
+
+      // 判断是否为恶劣天气（下雨/下雪/大风/雷雨/温度>=33）
+      const tempNum = parseInt(temp);
+      const windNum = parseInt(wind);
+      const isRain = [176,263,266,293,296,299,302,305,308,353,356,359].includes(code);
+      const isSnow = [179,182,185,227,230,320,323,326,329,332,335,338,350,368,371,374,377].includes(code);
+      const isStorm = [200,386,389,392,395].includes(code);
+      const isWindy = windNum >= 30;
+      const isHot = tempNum >= 33;
+      const isCold = tempNum <= 7;
+      window._badWeather = isRain || isSnow || isStorm || isWindy || isHot || isCold;
+      window._weatherNice = (code === 113 || code === 116) && tempNum < 33; // 晴天且温度<33
+      window._weatherTemp = tempNum;
+
+      let icon = '🌤️';
+      if (code === 113) icon = '☀️';
+      else if ([116].includes(code)) icon = '⛅';
+      else if ([119,122].includes(code)) icon = '☁️';
+      else if ([176,263,266,293,296,299,302,305,308,353,356,359].includes(code)) icon = '🌧️';
+      else if ([200,386,389,392,395].includes(code)) icon = '⛈️';
+      else if ([179,182,185,227,230,320,323,326,329,332,335,338,350,368,371,374,377].includes(code)) icon = '❄️';
+      else if ([143,248,260].includes(code)) icon = '🌫️';
+
+      document.getElementById('weather-icon').textContent = icon;
+      document.getElementById('weather-temp').innerHTML = `${temp}<span>°C</span>`;
+      document.getElementById('weather-desc').textContent = desc;
+      document.getElementById('weather-detail').innerHTML =
+        `<span>💧 湿度 ${humidity}%</span><span>💨 风速 ${wind}km/h</span><span>🤔 体感 ${feelsLike}°C</span>`;
+    })
+    .catch(() => {
+      document.getElementById('weather-desc').textContent = '天气数据加载失败';
+      window._badWeather = false;
+      window._weatherNice = false;
+      window._weatherTemp = null;
+    });
+}
+
+// ========== 黄历信息 ==========
+
+function loadAlmanac() {
+  // 使用免费的黄历API
+  fetch('https://www.1314.com.cn/api/taoci/')
+    .then(r => r.json())
+    .then(data => {
+      renderAlmanac(data);
+    })
+    .catch(() => {
+      // 备用：使用本地计算的简易黄历
+      renderFallbackAlmanac();
+    });
+}
+
+function renderAlmanac(data) {
+  const el = document.getElementById('almanac-content');
+  try {
+    const yi = data.yi || '无';
+    const ji = data.ji || '无';
+    const color = data.color || '红色';
+    el.innerHTML = `
+      <div class="almanac-row"><span class="almanac-label">✅ 宜</span><span class="almanac-value good">${yi}</span></div>
+      <div class="almanac-row"><span class="almanac-label">❌ 忌</span><span class="almanac-value bad">${ji}</span></div>
+      <div class="almanac-row"><span class="almanac-label">🎨 幸运色</span><span class="almanac-value"><span class="lucky-color" style="background:${getAlmanacColor(color)}"></span>${color}</span></div>
+    `;
+  } catch(e) {
+    renderFallbackAlmanac();
+  }
+}
+
+function renderFallbackAlmanac() {
+  // 基于日期的伪随机黄历（当API不可用时）
+  const today = new Date();
+  const seed = today.getFullYear() * 10000 + (today.getMonth()+1) * 100 + today.getDate();
+  const pseudoRandom = (n) => {
+    let x = Math.sin(seed + n) * 10000;
+    return x - Math.floor(x);
+  };
+
+  const yiList = ['出行','会友','聚餐','开市','纳采','求财','签约','搬家','动土','祈福','交易','入学'];
+  const jiList = ['诸事不宜','动土','嫁娶','出行','开市','入宅','安葬','破土','造桥','伐木'];
+  const colors = [
+    { name: '红色', hex: '#e53935' },
+    { name: '橙色', hex: '#ff9800' },
+    { name: '金色', hex: '#ffc107' },
+    { name: '绿色', hex: '#43a047' },
+    { name: '蓝色', hex: '#1e88e5' },
+    { name: '紫色', hex: '#8e24aa' },
+    { name: '粉色', hex: '#ec403a' },
+  ];
+
+  const yiCount = 3 + Math.floor(pseudoRandom(1) * 3);
+  const jiCount = 2 + Math.floor(pseudoRandom(2) * 2);
+  const shuffledYi = yiList.sort(() => pseudoRandom(3) - 0.5).slice(0, yiCount);
+  const shuffledJi = jiList.sort(() => pseudoRandom(4) - 0.5).slice(0, jiCount);
+  const luckyColor = colors[Math.floor(pseudoRandom(5) * colors.length)];
+
+  document.getElementById('almanac-content').innerHTML = `
+    <div class="almanac-row"><span class="almanac-label">✅ 宜</span><span class="almanac-value good">${shuffledYi.join('、')}</span></div>
+    <div class="almanac-row"><span class="almanac-label">❌ 忌</span><span class="almanac-value bad">${shuffledJi.join('、')}</span></div>
+    <div class="almanac-row"><span class="almanac-label">🎨 幸运色</span><span class="almanac-value"><span class="lucky-color" style="background:${luckyColor.hex}"></span>${luckyColor.name}</span></div>
+  `;
+}
+
+function getAlmanacColor(colorName) {
+  const map = {
+    '红': '#e53935', '橙色': '#ff9800', '金': '#ffc107', '绿': '#43a047',
+    '蓝': '#1e88e5', '紫': '#8e24aa', '粉': '#ec403a', '黄': '#fdd835',
+    '青': '#00acc1', '白': '#eceff1', '黑': '#37474f', '灰': '#78909c'
+  };
+  for (const [key, val] of Object.entries(map)) {
+    if (colorName.includes(key)) return val;
+  }
+  return '#d97757';
+}
+
+// ========== 倒数日 ==========
+function getCountdowns() {
+  const raw = localStorage.getItem('customCountdowns');
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveCountdowns(data) {
+  localStorage.setItem('customCountdowns', JSON.stringify(data));
+}
+
+// ========== 倒数日日期下拉框 ==========
+function getDaysInMonth(year, month) {
+  // month is 1-based
+  return new Date(year, month, 0).getDate();
+}
+
+function initCdDateSelects() {
+  // Year select: 1600-2050
+  const yearSel = document.getElementById('cd-year');
+  yearSel.innerHTML = '';
+  for (let y = 1600; y <= 2050; y++) {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    if (y === new Date().getFullYear()) opt.selected = true;
+    yearSel.appendChild(opt);
+  }
+
+  // Month select: 1-12
+  const monthSel = document.getElementById('cd-month');
+  monthSel.innerHTML = '';
+  for (let m = 1; m <= 12; m++) {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m;
+    if (m === new Date().getMonth() + 1) opt.selected = true;
+    monthSel.appendChild(opt);
+  }
+
+  // Init day select based on current month
+  updateCdDayOptions();
+}
+
+function updateCdDayOptions() {
+  const type = document.getElementById('cd-type').value;
+  const monthSel = document.getElementById('cd-month');
+  const yearSel = document.getElementById('cd-year');
+  const daySel = document.getElementById('cd-day');
+
+  let maxDay;
+  if (type === 'year') {
+    // 每年模式：取当年该月的天数
+    maxDay = getDaysInMonth(new Date().getFullYear(), parseInt(monthSel.value));
+  } else {
+    // 具体日期模式：取所选年月的天数
+    maxDay = getDaysInMonth(parseInt(yearSel.value), parseInt(monthSel.value));
+  }
+
+  const currentDay = parseInt(daySel.value) || 1;
+  daySel.innerHTML = '';
+  for (let d = 1; d <= maxDay; d++) {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    if (d === Math.min(currentDay, maxDay)) opt.selected = true;
+    daySel.appendChild(opt);
+  }
+}
+
+function onCdTypeChange() {
+  const type = document.getElementById('cd-type').value;
+  const yearSel = document.getElementById('cd-year');
+  if (type === 'year') {
+    yearSel.style.display = 'none';
+  } else {
+    yearSel.style.display = '';
+  }
+  updateCdDayOptions();
+}
+
+function onCdYearMonthChange() {
+  updateCdDayOptions();
+}
+
+function getCdDateValue() {
+  const type = document.getElementById('cd-type').value;
+  const month = document.getElementById('cd-month').value.padStart(2, '0');
+  const day = document.getElementById('cd-day').value.padStart(2, '0');
+  if (type === 'year') {
+    return `每年${month}-${day}`;
+  } else {
+    const year = document.getElementById('cd-year').value;
+    return `${year}-${month}-${day}`;
+  }
+}
+
+function setCdDateFromValue(dateStr) {
+  // Parse stored date string and set selects accordingly
+  const typeSel = document.getElementById('cd-type');
+  const yearSel = document.getElementById('cd-year');
+  const monthSel = document.getElementById('cd-month');
+  const daySel = document.getElementById('cd-day');
+
+  if (/^每年(\d{2})-(\d{2})$/.test(dateStr)) {
+    typeSel.value = 'year';
+    yearSel.style.display = 'none';
+    monthSel.value = parseInt(RegExp.$1);
+    updateCdDayOptions();
+    daySel.value = parseInt(RegExp.$2);
+  } else if (/^(\d{4})-(\d{2})-(\d{2})$/.test(dateStr)) {
+    typeSel.value = 'abs';
+    yearSel.style.display = '';
+    yearSel.value = parseInt(RegExp.$1);
+    monthSel.value = parseInt(RegExp.$2);
+    updateCdDayOptions();
+    daySel.value = parseInt(RegExp.$3);
+  }
+}
+
+function addCountdown() {
+  const name = document.getElementById('cd-name').value.trim();
+  const date = getCdDateValue();
+  if (!name) { showToast('请填写名称'); return; }
+  const data = getCountdowns();
+  data.push({ name, date, id: Date.now() });
+  saveCountdowns(data);
+  document.getElementById('cd-name').value = '';
+  showToast('添加成功');
+  renderCountdownList();
+  loadCountdownDisplay();
+}
+
+function deleteCountdown(id) {
+  showConfirm('删除倒数日', '确定要删除这个倒数日吗？', function(ok) {
+    if (ok) {
+      const data = getCountdowns().filter(d => d.id !== id);
+      saveCountdowns(data);
+      renderCountdownList();
+      loadCountdownDisplay();
+      showToast('已删除');
+    }
+  });
+}
+
+function editCountdown(id) {
+  const data = getCountdowns();
+  const item = data.find(d => d.id === id);
+  if (!item) return;
+  // Populate the form with existing values for editing
+  document.getElementById('cd-name').value = item.name;
+  setCdDateFromValue(item.date);
+  // Change the add button to an update button
+  const btn = document.querySelector('#countdown-page .btn-recommend');
+  btn.textContent = '💾 保存修改';
+  btn.onclick = function() {
+    const newName = document.getElementById('cd-name').value.trim();
+    const newDate = getCdDateValue();
+    if (!newName) { showToast('请填写名称'); return; }
+    item.name = newName;
+    item.date = newDate;
+    saveCountdowns(data);
+    document.getElementById('cd-name').value = '';
+    btn.textContent = '✅ 添加';
+    btn.onclick = addCountdown;
+    renderCountdownList();
+    loadCountdownDisplay();
+    showToast('已更新');
+  };
+  // Scroll to form
+  document.querySelector('#countdown-page .maintain-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderCountdownList() {
+  const data = getCountdowns();
+  const container = document.getElementById('countdown-list');
+  if (data.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px 0;">暂无自定义倒数日</div>';
+    return;
+  }
+  container.innerHTML = data.map(d => `
+    <div class="restaurant-list-item">
+      <div class="rli-info">
+        <div class="rli-name">${d.name}</div>
+        <div class="rli-meta">${d.date}</div>
+      </div>
+      <div class="rli-actions">
+        <button class="btn-edit" onclick="editCountdown(${d.id})">编辑</button>
+        <button class="btn-delete" onclick="deleteCountdown(${d.id})">删除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function resolveCountdownDate(dateStr, referenceYear) {
+  // Returns { date: Date, isRecurring: boolean }
+  if (/^每年(\d{2})-(\d{2})$/.test(dateStr)) {
+    const m = parseInt(RegExp.$1) - 1;
+    const d = parseInt(RegExp.$2);
+    let dt = new Date(referenceYear, m, d);
+    // If this year's date has passed, use next year
+    const todayStart = new Date(referenceYear, new Date().getMonth(), new Date().getDate());
+    if (dt < todayStart) dt = new Date(referenceYear + 1, m, d);
+    return { date: dt, isRecurring: true };
+  }
+  // Absolute date YYYY-MM-DD
+  return { date: new Date(dateStr), isRecurring: false };
+}
+
+function getCountdownText(name, targetDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(targetDate);
+  target.setHours(0, 0, 0, 0);
+  const diff = Math.round((target - today) / (1000 * 60 * 60 * 24));
+  if (diff === 0) return { text: `${name}就是今天`, type: 'today' };
+  if (diff > 0) return { text: `距离${name}还有${diff}日`, type: 'future' };
+  return { text: `${name}已经过去${Math.abs(diff)}日`, type: 'past' };
+}
+
+function loadCountdownDisplay() {
+  const container = document.getElementById('countdown-display');
+  if (!container) return;
+  const now = new Date();
+  const year = now.getFullYear();
+  const today = new Date(year, now.getMonth(), now.getDate());
+
+  // Get legal holiday (nearest future)
+  const holidayInfo = getNearestHoliday(today);
+  
+  // Get custom countdowns
+  const customs = getCountdowns().map(d => {
+    const resolved = resolveCountdownDate(d.date, year);
+    const info = getCountdownText(d.name, resolved.date);
+    return { name: d.name, ...info };
+  });
+
+  // Categorize
+  const todayItems = customs.filter(c => c.type === 'today');
+  const futureItems = customs.filter(c => c.type === 'future').sort((a, b) => {
+    const diffA = parseInt(a.text.match(/(\d+)日/)?.[1] || 0);
+    const diffB = parseInt(b.text.match(/(\d+)日/)?.[1] || 0);
+    return diffA - diffB;
+  });
+  const pastItems = customs.filter(c => c.type === 'past').sort((a, b) => {
+    const diffA = parseInt(a.text.match(/(\d+)日/)?.[1] || 0);
+    const diffB = parseInt(b.text.match(/(\d+)日/)?.[1] || 0);
+    return diffA - diffB;
+  });
+
+  let html = '';
+
+  // 1. Legal holiday (always shown)
+  if (holidayInfo) {
+    html += `<div class="countdown-main-item">${holidayInfo.text}</div>`;
+  }
+
+  // 2. Today items (max 2, small)
+  todayItems.slice(0, 2).forEach(item => {
+    html += `<div class="countdown-sub-item countdown-today">${item.text}</div>`;
+  });
+
+  // 3. Future items (max 2, small)
+  futureItems.slice(0, 2).forEach(item => {
+    html += `<div class="countdown-sub-item">${item.text}</div>`;
+  });
+
+  // 4. Past items (max 2, small)
+  pastItems.slice(0, 2).forEach(item => {
+    html += `<div class="countdown-sub-item countdown-past">${item.text}</div>`;
+  });
+
+  container.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;">暂无倒数日</div>';
+}
+
+function getNearestHoliday(today) {
+  const year = today.getFullYear();
+  const holidays = [
+    { name: '元旦', date: new Date(year, 0, 1) },
+    { name: '春节', date: new Date(year, 0, 29) },
+    { name: '清明节', date: new Date(year, 3, 4) },
+    { name: '劳动节', date: new Date(year, 4, 1) },
+    { name: '端午节', date: new Date(year, 4, 31) },
+    { name: '中秋节', date: new Date(year, 9, 6) },
+    { name: '国庆节', date: new Date(year, 9, 1) },
+    { name: '元旦', date: new Date(year + 1, 0, 1) },
+    { name: '春节', date: new Date(year + 1, 0, 17) },
+  ];
+  if (year === 2026) {
+    holidays[1] = { name: '春节', date: new Date(2026, 1, 17) };
+    holidays[2] = { name: '清明节', date: new Date(2026, 3, 5) };
+    holidays[4] = { name: '端午节', date: new Date(2026, 5, 19) };
+    holidays[5] = { name: '中秋节', date: new Date(2026, 8, 25) };
+  }
+  let nearest = null;
+  let minDiff = Infinity;
+  for (const h of holidays) {
+    const hDate = new Date(h.date.getFullYear(), h.date.getMonth(), h.date.getDate());
+    const diff = (hDate - today) / (1000 * 60 * 60 * 24);
+    if (diff >= 0 && diff < minDiff) {
+      minDiff = diff;
+      nearest = h;
+    }
+  }
+  if (nearest) {
+    const days = Math.round(minDiff);
+    const text = days === 0 ? `${nearest.name}就是今天` : `距离${nearest.name}还有${days}日`;
+    return { text };
+  }
+  return null;
+}
+
+function loadHolidayCountdown() {
+  initCdDateSelects();
+  loadCountdownDisplay();
+}
+
+// ========== 初始化Chip选择器 ==========
+function initChips() {
+  const container = document.getElementById('prefer-chips');
+  const options = ['面条米粉','牛蛙烤鱼','湘赣炒菜','烧烤烤肉','鸡汤饭','烤饼鸡柳等小吃','清淡的菜','西式工作餐','牛羊肉','普通工作餐','日式工作餐','汉堡披萨','大杂烩','麻辣烫冒菜','朝鲜饭','火锅'];
+  options.forEach(opt => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = opt;
+    chip.dataset.value = opt;
+    chip.addEventListener('click', function() {
+      this.classList.toggle('selected');
+      updateGoButtonText();
+      // Show/hide clear button
+      const selected = container.querySelectorAll('.chip.selected');
+      document.getElementById('chip-clear').style.display = selected.length > 0 ? 'inline-block' : 'none';
+    });
+    container.appendChild(chip);
+  });
+}
+
+// ========== 启动 ==========
+function clearAllChips() {
+  document.querySelectorAll('#prefer-chips .chip.selected').forEach(c => c.classList.remove('selected'));
+  document.getElementById('chip-clear').style.display = 'none';
+  updateGoButtonText();
+}
+function clearAvoidChips() {
+  document.querySelectorAll('#avoid-chips .chip.selected').forEach(c => c.classList.remove('selected'));
+  document.getElementById('avoid-chip-clear').style.display = 'none';
+  updateGoButtonText();
+}
+function initAvoidChips() {
+  const container = document.getElementById('avoid-chips');
+  const options = ['味道大的','距离远的','平平无奇的','要做很久的'];
+  options.forEach(opt => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = opt;
+    chip.dataset.value = opt;
+    chip.addEventListener('click', function() {
+      this.classList.toggle('selected');
+      updateGoButtonText();
+      const selected = container.querySelectorAll('.chip.selected');
+      document.getElementById('avoid-chip-clear').style.display = selected.length > 0 ? 'inline-block' : 'none';
+    });
+    container.appendChild(chip);
+  });
+}
+updateDate();
+initScoreSelects();
+initAvoidChips();
+initChips();
+updateGoButtonText();
+loadWeather();
+loadAlmanac();
+loadHolidayCountdown();
+</script>
+</body>
+</html>
