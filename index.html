@@ -1453,21 +1453,80 @@ let _lastRecommendedNames = [];
 // ========== 数据初始化 ==========
 const DATA_VERSION = 'V1-260422';
 
-function getData() {
-  const raw = localStorage.getItem('restaurantData');
-  const savedVersion = localStorage.getItem('restaurantDataVersion');
-  // 版本不匹配或无数据时，用最新的 INITIAL_DATA 覆盖
-  if (!raw || savedVersion !== DATA_VERSION) {
-    localStorage.setItem('restaurantData', JSON.stringify(INITIAL_DATA));
-    localStorage.setItem('restaurantDataVersion', DATA_VERSION);
-    return JSON.parse(JSON.stringify(INITIAL_DATA));
+// ========== GitHub 同步配置 ==========
+const GITHUB_CONFIG = {
+  owner: 'yoosiwoo46',
+  repo: 'xzdp',
+  branch: 'main',
+  file: 'restaurants.json',
+  token: '',
+  get rawUrl() { return `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}/${this.file}`; },
+  get apiUrl() { return `https://api.github.com/repos/${this.owner}/${this.repo}/contents/${this.file}`; }
+};
+
+async function getData() {
+  // Try loading from GitHub first
+  try {
+    const resp = await fetch(GITHUB_CONFIG.rawUrl + '?t=' + Date.now());
+    if (resp.ok) {
+      const data = await resp.json();
+      // Cache to localStorage
+      localStorage.setItem('restaurantData', JSON.stringify(data));
+      localStorage.setItem('restaurantDataVersion', DATA_VERSION);
+      return JSON.parse(JSON.stringify(data));
+    }
+  } catch(e) {
+    console.warn('GitHub加载失败，使用本地缓存', e);
   }
-  return JSON.parse(raw);
+  // Fallback to localStorage
+  const raw = localStorage.getItem('restaurantData');
+  if (raw) return JSON.parse(raw);
+  // Ultimate fallback to INITIAL_DATA
+  return JSON.parse(JSON.stringify(INITIAL_DATA));
 }
 
-function saveData(data) {
+async function saveData(data) {
+  // Save locally first
   localStorage.setItem('restaurantData', JSON.stringify(data));
   localStorage.setItem('restaurantDataVersion', DATA_VERSION);
+  // Push to GitHub
+  try {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    // Get current file SHA
+    const resp = await fetch(GITHUB_CONFIG.apiUrl, {
+      headers: { 'Authorization': `token ${GITHUB_CONFIG.token}` }
+    });
+    let sha = '';
+    if (resp.ok) {
+      const info = await resp.json();
+      sha = info.sha;
+    }
+    // Create or update file
+    const method = sha ? 'PUT' : 'POST';
+    const body = {
+      message: `更新餐厅数据 ${new Date().toLocaleString('zh-CN')}`,
+      content: content,
+      branch: GITHUB_CONFIG.branch
+    };
+    if (sha) body.sha = sha;
+    
+    const putResp = await fetch(GITHUB_CONFIG.apiUrl, {
+      method: method,
+      headers: {
+        'Authorization': `token ${GITHUB_CONFIG.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (putResp.ok) {
+      console.log('数据已同步到GitHub');
+    } else {
+      const err = await putResp.json();
+      console.warn('GitHub同步失败', err);
+    }
+  } catch(e) {
+    console.warn('GitHub同步失败', e);
+  }
 }
 
 // ========== 进食记录 ==========
@@ -1729,8 +1788,8 @@ function updateGoButtonText() {
 /**
  * 盲盒模式：从符合人数和时间条件的餐厅中随机选3家
  */
-function blindBoxRecommend(isRegenerate) {
-  const restaurants = getData();
+async function blindBoxRecommend(isRegenerate) {
+  const restaurants = await getData();
   const params = {
     people: parseInt(document.getElementById('people-count').value) || 2,
     urgency: document.getElementById('urgency').value,
@@ -1784,14 +1843,14 @@ function blindBoxRecommend(isRegenerate) {
 /**
  * 执行推荐（含降级策略）
  */
-function recommend(isRegenerate) {
+async function recommend(isRegenerate) {
   // 盲盒模式：随机推荐
   if (isBlindBoxMode()) {
     blindBoxRecommend(isRegenerate);
     return;
   }
 
-  const restaurants = getData();
+  const restaurants = await getData();
   const params = {
     people: parseInt(document.getElementById('people-count').value) || 2,
     urgency: document.getElementById('urgency').value,
@@ -1989,9 +2048,9 @@ function switchPage(pageId) {
   window.scrollTo(0, 0);
 }
 
-function showMaintainPage() {
+async function showMaintainPage() {
   switchPage('maintain-page');
-  renderRestaurantTable();
+  await renderRestaurantTable();
 }
 
 // ========== 推荐页顶部提示文案 ==========
@@ -2047,8 +2106,8 @@ function showRecommendPage() {
 }
 
 // ========== 数据维护：渲染餐厅列表 ==========
-function renderRestaurantTable() {
-  const data = getData();
+async function renderRestaurantTable() {
+  const data = await getData();
   const container = document.getElementById('restaurant-list');
   if (data.length === 0) {
     container.innerHTML = '<div style="text-align:center;color:#b0aea5;padding:30px 0;">暂无餐厅数据</div>';
@@ -2069,7 +2128,7 @@ function renderRestaurantTable() {
 }
 
 // ========== 数据维护：新增餐厅 ==========
-function addRestaurant() {
+async function addRestaurant() {
   const areaSelect = document.getElementById('add-area');
   let area = areaSelect.value;
   if (area === '其他') {
@@ -2099,7 +2158,7 @@ function addRestaurant() {
   const minPeople = document.getElementById('add-minpeople').value;
   if (minPeople === '') { showToast('请填写建议最小人数'); return; }
 
-  const data = getData();
+  const data = await getData();
   data.push({
     商圈: area,
     店名: name,
@@ -2112,10 +2171,10 @@ function addRestaurant() {
     美味程度: parseInt(tasty),
     建议最小人数: parseInt(minPeople)
   });
-  saveData(data);
+  await saveData(data);
   showToast('新增成功 ✅');
   clearAddForm();
-  renderRestaurantTable();
+  await renderRestaurantTable();
 }
 
 function clearAddForm() {
@@ -2134,8 +2193,8 @@ function clearAddForm() {
 }
 
 // ========== 数据维护：编辑餐厅 ==========
-function openEditModal(index) {
-  const data = getData();
+async function openEditModal(index) {
+  const data = await getData();
   const r = data[index];
   document.getElementById('edit-index').value = index;
 
@@ -2229,9 +2288,9 @@ function closeEditModal() {
   }, { passive: true });
 })();
 
-function saveEdit() {
+async function saveEdit() {
   const index = parseInt(document.getElementById('edit-index').value);
-  const data = getData();
+  const data = await getData();
 
   const areaSelect = document.getElementById('edit-area');
   let area = areaSelect.value;
@@ -2252,10 +2311,10 @@ function saveEdit() {
     美味程度: parseInt(document.getElementById('edit-tasty').value),
     建议最小人数: parseInt(document.getElementById('edit-minpeople').value)
   };
-  saveData(data);
+  await saveData(data);
   closeEditModal();
   showToast('保存成功 ✅');
-  renderRestaurantTable();
+  await renderRestaurantTable();
 }
 
 // ========== 数据维护：删除餐厅 ==========
@@ -2272,15 +2331,15 @@ function closeConfirm(result) {
   _confirmCallback = null;
 }
 
-function deleteRestaurant(index) {
-  const data = getData();
+async function deleteRestaurant(index) {
+  const data = await getData();
   const name = data[index] ? data[index].店名 : '';
-  showConfirm('确认删除', `确定要删除「${name}」吗？此操作不可撤销。`, function(confirmed) {
+  showConfirm('确认删除', `确定要删除「${name}」吗？此操作不可撤销。`, async function(confirmed) {
     if (confirmed) {
       data.splice(index, 1);
-      saveData(data);
+      await saveData(data);
       showToast('已删除');
-      renderRestaurantTable();
+      await renderRestaurantTable();
     }
   });
 }
